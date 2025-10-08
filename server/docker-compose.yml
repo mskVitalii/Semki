@@ -1,0 +1,128 @@
+services:
+  # ----------------------------------- APPS
+  semki-server:
+    build: .
+    develop:
+      watch:
+        - action: rebuild
+          path: .
+    env_file:
+      - .env.production
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/api/v1/healthcheck"]
+      interval: 15s
+      timeout: 3s
+      start_period: 1s
+      retries: 3
+    ports:
+      - "8080:8080"
+    networks:
+      - semki_network
+    depends_on:
+      mongo:
+        condition: service_healthy
+      loki:
+        condition: service_started
+
+  # ----------------------------------- DATABASES
+  mongo:
+    image: mongo:latest
+    healthcheck:
+      test: mongosh --eval 'db.runCommand("ping").ok' --quiet
+      interval: 15s
+      retries: 3
+      start_period: 15s
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb-data:/data/db
+      - ./resources/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+    networks:
+      - semki_network
+    env_file: .env.production
+    command: ["--auth"]
+
+  # ----------------------------------- INFRA
+  # [MONITORING] Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./resources/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - semki_network
+
+  # [MONITORING] Grafana
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3030:3000"
+    networks:
+      - semki_network
+    env_file: .env.production
+    environment:
+      - GF_FEATURE_TOGGLES_ENABLE=flameGraph
+    volumes:
+      - ./resources/grafana.yml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - ./resources/grafana-provisioning:/etc/grafana/provisioning
+      - grafana:/var/lib/grafana
+      - ./resources/grafana-dashboards:/var/lib/grafana/dashboards
+
+  # [profiling] - Pyroscope
+  pyroscope:
+    image: pyroscope/pyroscope:latest
+    deploy:
+      restart_policy:
+        condition: on-failure
+    ports:
+      - "4040:4040"
+    networks:
+      - semki_network
+    environment:
+      - PYROSCOPE_STORAGE_PATH=/var/lib/pyroscope
+    command:
+      - "server"
+
+  # [TRACING] Jaeger
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    networks:
+      - semki_network
+    env_file: .env.production
+    ports:
+      - "16686:16686"
+      - "14269:14269"
+      - "${JAEGER_PORT:-14268}:14268"
+
+  # [LOGGING] promtail
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log:/var/log:ro
+      - ./resources/promtail-config.yaml:/etc/promtail/promtail.yaml
+    command: -config.file=/etc/promtail/promtail.yaml
+    networks:
+      - semki_network
+
+  # [LOGGING] loki
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./resources/loki-config.yaml:/etc/loki/local-config.yaml
+    networks:
+      - semki_network
+
+# ----------------------------------- OTHER
+networks:
+  semki_network:
+    driver: bridge
+
+# Persistent data stores
+volumes:
+  mongodb-data:
+  grafana:
