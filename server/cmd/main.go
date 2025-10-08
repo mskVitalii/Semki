@@ -71,7 +71,7 @@ func startup(cfg *config.Config) {
 	if err != nil {
 		telemetry.Log.Fatal("failed to connect MongoDB", zap.Error(err))
 	}
-	//if mongo.IsPlacesCollectionExist(db) == false {
+	//if mongo. == false {
 	//	// TODO: JSON mock for organization
 	//	// TODO: Add route to upload mock
 	//	telemetry.Log.Info("successfully loaded datasets")
