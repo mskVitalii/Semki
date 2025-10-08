@@ -71,13 +71,13 @@ func startup(cfg *config.Config) {
 	if err != nil {
 		telemetry.Log.Fatal("failed to connect MongoDB", zap.Error(err))
 	}
-	if mongo.IsPlacesCollectionExist(db) == false {
-		// TODO: JSON mock for organization
-		// TODO: Add route to upload mock
-		telemetry.Log.Info("successfully loaded datasets")
-	} else {
-		telemetry.Log.Info("datasets are in database")
-	}
+	//if mongo.IsPlacesCollectionExist(db) == false {
+	//	// TODO: JSON mock for organization
+	//	// TODO: Add route to upload mock
+	//	telemetry.Log.Info("successfully loaded datasets")
+	//} else {
+	//	telemetry.Log.Info("datasets are in database")
+	//}
 
 	mongoRepo := mongo.New(cfg, db)
 	statusService := service.NewStatusService()
