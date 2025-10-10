@@ -1,6 +1,6 @@
 package dto
 
-import "dwt/internal/model"
+import "semki/internal/model"
 
 type SearchUsersRequest struct {
 	Teams         []string `json:"teams,omitempty"`

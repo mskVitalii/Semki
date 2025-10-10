@@ -2,13 +2,13 @@ package mongo
 
 import (
 	"context"
-	"dwt/internal/utils/config"
-	"dwt/pkg/clients"
-	"dwt/pkg/telemetry"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
+	"semki/internal/utils/config"
+	"semki/pkg/clients"
+	"semki/pkg/telemetry"
 )
 
 func SetupMongo(cfg *config.MongoConfig) (*clients.MongoDb, error) {
@@ -16,7 +16,7 @@ func SetupMongo(cfg *config.MongoConfig) (*clients.MongoDb, error) {
 	db, err := clients.ConnectToMongoDb(ctx,
 		cfg.User,
 		cfg.Password,
-		cfg.HostName,
+		cfg.Host,
 		cfg.Database,
 		cfg.Port)
 	if err != nil {

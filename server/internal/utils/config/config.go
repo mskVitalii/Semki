@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/joho/godotenv"
 	"log"
@@ -28,11 +29,24 @@ type GoogleConfig struct {
 	Enabled      bool
 }
 
+type QdrantConfig struct {
+	Host     string
+	HttpPort int
+	GrpcPort int
+}
+
+type EmbedderConfig struct {
+	Url        string
+	Host       string
+	Port       int
+	Dimensions int
+}
+
 type MongoConfig struct {
 	Database string
 	User     string
 	Password string
-	HostName string
+	Host     string
 	Port     int
 }
 
@@ -45,19 +59,20 @@ type JaegerConfig struct {
 // Config - app.yml + .env for secrets & dev/prod values
 type Config struct {
 	*AppConfig
-	Environment            string
-	SecretKeyJWT           string
-	CryptoKey              string
-	IsDebug                bool
-	Mongo                  MongoConfig
-	Google                 GoogleConfig
-	Jaeger                 JaegerConfig
-	PyroscopeServerAddress string
-	LokiURL                string
-	FrontendUrl            string
-	JsonLog                bool
-	EnabledPyroscope       bool
-	EnabledSentry          bool
+	Environment      string
+	SecretKeyJWT     string
+	CryptoKey        string
+	IsDebug          bool
+	Mongo            MongoConfig
+	Google           GoogleConfig
+	Jaeger           JaegerConfig
+	Qdrant           QdrantConfig
+	Embedder         EmbedderConfig
+	PyroscopeAddress string
+	FrontendUrl      string
+	JsonLog          bool
+	EnabledPyroscope bool
+	EnabledSentry    bool
 }
 
 const configPath = "app.yml"
@@ -106,27 +121,28 @@ func GetConfig(rootPath string) *Config {
 		instance.Jaeger.Enabled = strings.ToLower(getEnvKey("ENABLED_JAEGER")) == "true"
 		if instance.Jaeger.Enabled {
 			instance.Jaeger.Host = getEnvKey("JAEGER_HOST")
-			num, err := strconv.Atoi(getEnvKey("JAEGER_PORT"))
-			if err != nil {
-				log.Print("[GetConfig] JAEGER_PORT env variable not set or not an int")
-			}
-			instance.Jaeger.Port = num
+			instance.Jaeger.Port = getEnvKeyInt("JAEGER_PORT")
 		}
 
 		instance.Mongo.Database = getEnvKey("MONGO_DATABASE")
 		instance.Mongo.Password = getEnvKey("MONGO_PASSWORD")
-		instance.Mongo.HostName = getEnvKey("MONGO_HOST_NAME")
+		instance.Mongo.Host = getEnvKey("MONGO_HOST_NAME")
 		instance.Mongo.User = getEnvKey("MONGO_USER")
-		num, err := strconv.Atoi(getEnvKey("MONGO_PORT"))
-		if err != nil {
-			log.Fatal("[GetConfig] MONGO_PORT env variable not set or not an int")
-		}
-		instance.Mongo.Port = num
+		instance.Mongo.Port = getEnvKeyInt("MONGO_PORT")
 
 		instance.EnabledPyroscope = strings.ToLower(getEnvKey("ENABLED_PYROSCOPE")) == "true"
 		if instance.EnabledPyroscope {
-			instance.PyroscopeServerAddress = getEnvKey("PYROSCOPE_SERVER_ADDRESS")
+			instance.PyroscopeAddress = getEnvKey("PYROSCOPE_ADDRESS")
 		}
+
+		instance.Qdrant.Host = getEnvKey("QDRANT_HOST")
+		instance.Qdrant.GrpcPort = getEnvKeyInt("QDRANT_GRPC_PORT")
+		instance.Qdrant.HttpPort = getEnvKeyInt("QDRANT_HTTP_PORT")
+
+		instance.Embedder.Host = getEnvKey("EMBEDDER_HOST")
+		instance.Embedder.Port = getEnvKeyInt("EMBEDDER_PORT")
+		instance.Embedder.Url = fmt.Sprintf("http://%s:%d", instance.Embedder.Host, instance.Embedder.Port)
+		instance.Embedder.Dimensions = getEnvKeyInt("EMBEDDER_DIMENSIONS")
 
 		instance.FrontendUrl = getEnvKey("FRONTEND_URL")
 		instance.JsonLog = getEnvKey("JSON_LOG") == "true"
@@ -142,4 +158,18 @@ func getEnvKey(key string) string {
 	}
 	log.Fatalf("[getEnvKey] no value for " + key)
 	return ""
+}
+
+func getEnvKeyInt(key string) int {
+	value, exists := os.LookupEnv(key)
+	if !exists {
+		log.Fatalf("[getEnvKeyInt] no value for " + key)
+	}
+
+	num, err := strconv.Atoi(value)
+	if err != nil {
+		log.Fatalf("[getEnvKeyInt] cannot convert to int " + value)
+	}
+
+	return num
 }

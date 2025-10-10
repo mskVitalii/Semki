@@ -24,9 +24,26 @@ services:
       loki:
         condition: service_started
 
+  embedder:
+    image: mskkote/open-data-embedder:latest
+    container_name: semki-embedder
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - semki_network
+
+
   # ----------------------------------- DATABASES
   mongo:
     image: mongo:latest
+    container_name: semki-mongo
     healthcheck:
       test: mongosh --eval 'db.runCommand("ping").ok' --quiet
       interval: 15s
@@ -42,12 +59,49 @@ services:
     env_file: .env.production
     command: ["--auth"]
 
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    container_name: semki-qdrant
+    ports:
+      - "6333:6333"  # HTTP API
+      - "6334:6334"  # gRPC API
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    environment:
+      # gRPC configuration
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__SERVICE__ENABLE_TLS=false
+      # Performance optimizations
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=0  # Use all available cores
+      - QDRANT__STORAGE__PERFORMANCE__MAX_OPTIMIZATION_THREADS=2
+      # Optional: increase payload index threshold for better performance
+      - QDRANT__STORAGE__OPTIMIZERS__PAYLOAD_INDEX_THRESHOLD=20000
+    env_file:
+      - .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "timeout", "1", "bash", "-c", "</dev/tcp/localhost/6333"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    # Resource limits (adjust based on your system)
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+    networks:
+      - semki_network
+
   # ----------------------------------- INFRA
   # [MONITORING] Prometheus
   prometheus:
     image: prom/prometheus:latest
     ports:
       - "9090:9090"
+    container_name: semki-prometheus
     volumes:
       - ./resources/prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
@@ -58,8 +112,7 @@ services:
     image: grafana/grafana:latest
     ports:
       - "3030:3000"
-    networks:
-      - semki_network
+    container_name: semki-grafana
     env_file: .env.production
     environment:
       - GF_FEATURE_TOGGLES_ENABLE=flameGraph
@@ -68,6 +121,8 @@ services:
       - ./resources/grafana-provisioning:/etc/grafana/provisioning
       - grafana:/var/lib/grafana
       - ./resources/grafana-dashboards:/var/lib/grafana/dashboards
+    networks:
+      - semki_network
 
   # [profiling] - Pyroscope
   pyroscope:
@@ -77,12 +132,13 @@ services:
         condition: on-failure
     ports:
       - "4040:4040"
-    networks:
-      - semki_network
+    container_name: semki-pyroscope
     environment:
       - PYROSCOPE_STORAGE_PATH=/var/lib/pyroscope
     command:
       - "server"
+    networks:
+      - semki_network
 
   # [TRACING] Jaeger
   jaeger:
@@ -94,6 +150,7 @@ services:
       - "16686:16686"
       - "14269:14269"
       - "${JAEGER_PORT:-14268}:14268"
+    container_name: semki-jaeger
 
   # [LOGGING] promtail
   promtail:
@@ -105,12 +162,14 @@ services:
     command: -config.file=/etc/promtail/promtail.yaml
     networks:
       - semki_network
+    container_name: semki-promtail
 
   # [LOGGING] loki
   loki:
     image: grafana/loki:latest
     ports:
       - "3100:3100"
+    container_name: semki-loki
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./resources/loki-config.yaml:/etc/loki/local-config.yaml

@@ -2,15 +2,6 @@ package main
 
 import (
 	"context"
-	_ "dwt/docs"
-	"dwt/internal/adapter/mongo"
-	"dwt/internal/controller/http/v1/routes"
-	"dwt/internal/service"
-	"dwt/internal/utils/config"
-	"dwt/internal/utils/jwt"
-	"dwt/pkg/clients"
-	google2 "dwt/pkg/google"
-	"dwt/pkg/telemetry"
 	"errors"
 	"fmt"
 	"github.com/getsentry/sentry-go"
@@ -21,9 +12,20 @@ import (
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.uber.org/zap"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	_ "semki/docs"
+	"semki/internal/adapter/mongo"
+	"semki/internal/adapter/qdrant"
+	"semki/internal/controller/http/v1/routes"
+	"semki/internal/service"
+	"semki/internal/utils/config"
+	"semki/internal/utils/jwt"
+	"semki/pkg/clients"
+	google2 "semki/pkg/google"
+	"semki/pkg/telemetry"
 	"time"
 )
 
@@ -58,8 +60,15 @@ func startup(cfg *config.Config) {
 		err = errors.Join(err, otelShutdown(ctx))
 	}()
 
+	vectorDb, err := qdrant.SetupQdrant(&cfg.Qdrant)
+	if err != nil {
+		log.Fatalf("Failed to create Qdrant client: %v", err)
+	}
+	telemetry.Log.Info("Connected to Qdrant")
+	defer vectorDb.Close()
+
 	if cfg.EnabledPyroscope {
-		pyroscope, err := telemetry.SetupPyroscope(cfg.PyroscopeServerAddress)
+		pyroscope, err := telemetry.SetupPyroscope(cfg.PyroscopeAddress)
 		if err != nil {
 			telemetry.Log.Fatal("[SetupPyroscope] Error setting up pyroscope", zap.Error(err))
 			return
@@ -71,17 +80,14 @@ func startup(cfg *config.Config) {
 	if err != nil {
 		telemetry.Log.Fatal("failed to connect MongoDB", zap.Error(err))
 	}
-	//if mongo. == false {
-	//	// TODO: JSON mock for organization
-	//	// TODO: Add route to upload mock
-	//	telemetry.Log.Info("successfully loaded datasets")
-	//} else {
-	//	telemetry.Log.Info("datasets are in database")
-	//}
 
+	qdrantRepo := qdrant.New(cfg, vectorDb)
 	mongoRepo := mongo.New(cfg, db)
 	statusService := service.NewStatusService()
 	userService := service.NewUserService(mongoRepo)
+	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
+	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
+
 	authService := service.NewAuthService(mongoRepo)
 	auth := jwt.Startup(cfg, authService)
 	var googleAuthService routes.IGoogleAuthService
@@ -149,6 +155,7 @@ func startup(cfg *config.Config) {
 		routes.RegisterStatusRoutes(apiV1, statusService)
 		routes.RegisterUserRoutes(apiV1, userService, auth)
 		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, auth)
+		routes.RegisterSearchRoutes(apiV1, searchService, auth)
 	}
 	r.NoRoute(auth.MiddlewareFunc(), jwt.NoRoute)
 	// endregion

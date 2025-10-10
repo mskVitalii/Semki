@@ -1,10 +1,10 @@
 package routes
 
 import (
-	"dwt/internal/controller/http/v1/dto"
-	"dwt/internal/model"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"semki/internal/controller/http/v1/dto"
+	"semki/internal/model"
 )
 
 const (

@@ -1,13 +1,6 @@
 package jwt
 
 import (
-	"dwt/internal/controller/http/v1/dto"
-	"dwt/internal/controller/http/v1/routes"
-	"dwt/internal/model"
-	"dwt/internal/utils/config"
-	"dwt/internal/utils/mongo"
-	"dwt/pkg/lib"
-	"dwt/pkg/telemetry"
 	"errors"
 	"fmt"
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -15,6 +8,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 	"net/http"
+	"semki/internal/controller/http/v1/dto"
+	"semki/internal/controller/http/v1/routes"
+	"semki/internal/model"
+	"semki/internal/utils/config"
+	"semki/internal/utils/mongoUtils"
+	"semki/pkg/lib"
+	"semki/pkg/telemetry"
 	"time"
 )
 
@@ -113,7 +113,7 @@ func IdentityHandler(c *gin.Context) interface{} {
 		lib.ResponseInternalServerError(c, err, "Invalid claims format")
 		return err
 	}
-	id, err := mongo.StringToObjectID(idStr)
+	id, err := mongoUtils.StringToObjectID(idStr)
 	if err != nil {
 		lib.ResponseInternalServerError(c,
 			errors.New("couldn't retrieve userClaims[_id] after authorization by "+idStr),
@@ -143,7 +143,7 @@ func IdentityHandler(c *gin.Context) interface{} {
 			"Invalid claims format")
 		return err
 	}
-	OrganizationId, err := mongo.StringToObjectID(organizationIdStr)
+	OrganizationId, err := mongoUtils.StringToObjectID(organizationIdStr)
 	if err != nil {
 		lib.ResponseInternalServerError(c,
 			errors.New("couldn't retrieve userClaims[OrganizationId] after authorization by "+organizationIdStr),

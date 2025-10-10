@@ -2,15 +2,15 @@ package mongo_test
 
 import (
 	"context"
-	"dwt/internal/adapter/mongo"
-	"dwt/internal/model"
-	"dwt/internal/utils/config"
-	"dwt/pkg/clients"
-	"dwt/pkg/lib"
-	"dwt/pkg/telemetry"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
+	"semki/internal/adapter/mongo"
+	"semki/internal/model"
+	"semki/internal/utils/config"
+	"semki/pkg/clients"
+	"semki/pkg/lib"
+	"semki/pkg/telemetry"
 	"testing"
 )
 

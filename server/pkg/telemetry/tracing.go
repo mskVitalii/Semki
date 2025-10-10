@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"context"
-	"dwt/internal/utils/config"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -14,6 +13,7 @@ import (
 	"go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+	"semki/internal/utils/config"
 )
 
 func SetupOTelSDK(ctx context.Context, cfg *config.Config) (shutdown func(context.Context) error, err error) {

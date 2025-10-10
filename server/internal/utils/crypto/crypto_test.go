@@ -1,11 +1,11 @@
 package crypto_test
 
 import (
-	"dwt/internal/model"
-	"dwt/internal/utils/config"
-	"dwt/internal/utils/crypto"
 	"fmt"
 	"github.com/stretchr/testify/assert"
+	"semki/internal/model"
+	"semki/internal/utils/config"
+	"semki/internal/utils/crypto"
 	"testing"
 )
 

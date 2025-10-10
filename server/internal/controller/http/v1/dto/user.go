@@ -1,9 +1,9 @@
 package dto
 
 import (
-	"dwt/internal/model"
-	"dwt/pkg/lib"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"semki/internal/model"
+	"semki/pkg/lib"
 )
 
 type DeleteUserResponse struct {

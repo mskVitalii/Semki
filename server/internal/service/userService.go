@@ -1,16 +1,16 @@
 package service
 
 import (
-	"dwt/internal/adapter/mongo"
-	"dwt/internal/controller/http/v1/dto"
-	"dwt/internal/controller/http/v1/routes"
-	"dwt/internal/model"
-	"dwt/internal/utils/jwt"
-	mongo2 "dwt/internal/utils/mongo"
-	"dwt/pkg/lib"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 	"net/http"
+	"semki/internal/adapter/mongo"
+	"semki/internal/controller/http/v1/dto"
+	"semki/internal/controller/http/v1/routes"
+	"semki/internal/model"
+	"semki/internal/utils/jwt"
+	"semki/internal/utils/mongoUtils"
+	"semki/pkg/lib"
 )
 
 // userService - dependent services
@@ -101,7 +101,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 //	@Router			/api/v1/user/{id} [get]
 func (s *userService) GetUser(c *gin.Context) {
 	id := c.Param("id")
-	paramObjectId, err := mongo2.StringToObjectID(id)
+	paramObjectId, err := mongoUtils.StringToObjectID(id)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
 		return
@@ -157,7 +157,7 @@ func (s *userService) GetUser(c *gin.Context) {
 //	@Router			/api/v1/user/{id} [put]
 func (s *userService) UpdateUser(c *gin.Context) {
 	id := c.Param("id")
-	paramObjectId, err := mongo2.StringToObjectID(id)
+	paramObjectId, err := mongoUtils.StringToObjectID(id)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
 		return
@@ -232,7 +232,7 @@ func (s *userService) UpdateUser(c *gin.Context) {
 func (s *userService) DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	paramObjectId, err := mongo2.StringToObjectID(id)
+	paramObjectId, err := mongoUtils.StringToObjectID(id)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
 		return

@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"dwt/internal/model"
+	"semki/internal/model"
 )
 
 // TODO: encrypt sensitive fields

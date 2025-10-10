@@ -188,6 +188,91 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/search": {
+            "get": {
+                "description": "Performs a semantic search for users using text embeddings and optional filters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/event-stream"
+                ],
+                "tags": [
+                    "search"
+                ],
+                "summary": "Semantic user search",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search query text for semantic similarity",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter users by team names (can be multiple)",
+                        "name": "teams",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter users by experience levels (can be multiple)",
+                        "name": "levels",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "Filter users by locations (can be multiple)",
+                        "name": "locations",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum number of users to return (default 5, max 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Streamed search results with semantic descriptions",
+                        "schema": {
+                            "$ref": "#/definitions/service.SearchResultWithUserAndDescription"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid query parameters",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error during search or embedding",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/user": {
             "post": {
                 "description": "Creates a new user in the MongoDB database.",
@@ -466,6 +551,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "organizationId": {
                     "type": "string"
                 },
@@ -580,6 +668,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "organizationId": {
                     "type": "string"
                 },
@@ -637,6 +728,20 @@ const docTemplate = `{
                 },
                 "team": {
                     "type": "string"
+                }
+            }
+        },
+        "service.SearchResultWithUserAndDescription": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "score": {
+                    "type": "number"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
                 }
             }
         }

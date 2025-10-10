@@ -38,6 +38,8 @@ definitions:
         $ref: '#/definitions/model.UserContact'
       email:
         type: string
+      name:
+        type: string
       organizationId:
         type: string
       organizationRole:
@@ -112,6 +114,8 @@ definitions:
         $ref: '#/definitions/model.UserContact'
       email:
         type: string
+      name:
+        type: string
       organizationId:
         type: string
       organizationRole:
@@ -150,6 +154,15 @@ definitions:
         type: string
       team:
         type: string
+    type: object
+  service.SearchResultWithUserAndDescription:
+    properties:
+      description:
+        type: string
+      score:
+        type: number
+      user:
+        $ref: '#/definitions/model.User'
     type: object
 info:
   contact:
@@ -270,6 +283,64 @@ paths:
       summary: Refreshes the authentication token
       tags:
       - auth
+  /api/v1/search:
+    get:
+      consumes:
+      - application/json
+      description: Performs a semantic search for users using text embeddings and
+        optional filters.
+      parameters:
+      - description: Search query text for semantic similarity
+        in: query
+        name: q
+        type: string
+      - collectionFormat: csv
+        description: Filter users by team names (can be multiple)
+        in: query
+        items:
+          type: string
+        name: teams
+        type: array
+      - collectionFormat: csv
+        description: Filter users by experience levels (can be multiple)
+        in: query
+        items:
+          type: string
+        name: levels
+        type: array
+      - collectionFormat: csv
+        description: Filter users by locations (can be multiple)
+        in: query
+        items:
+          type: string
+        name: locations
+        type: array
+      - description: Maximum number of users to return (default 5, max 20)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - text/event-stream
+      responses:
+        "200":
+          description: Streamed search results with semantic descriptions
+          schema:
+            $ref: '#/definitions/service.SearchResultWithUserAndDescription'
+        "400":
+          description: Invalid query parameters
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error during search or embedding
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Semantic user search
+      tags:
+      - search
   /api/v1/user:
     post:
       consumes:

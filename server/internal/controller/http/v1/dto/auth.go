@@ -1,8 +1,8 @@
 package dto
 
 import (
-	"dwt/internal/model"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"semki/internal/model"
 	"time"
 )
 

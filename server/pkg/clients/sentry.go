@@ -1,10 +1,10 @@
 package clients
 
 import (
-	"dwt/internal/controller/http/v1/routes"
-	"dwt/pkg/telemetry"
 	"github.com/getsentry/sentry-go"
 	"go.uber.org/zap"
+	"semki/internal/controller/http/v1/routes"
+	"semki/pkg/telemetry"
 	"strings"
 )
 

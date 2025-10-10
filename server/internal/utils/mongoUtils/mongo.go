@@ -1,4 +1,4 @@
-package mongo
+package mongoUtils
 
 import (
 	"fmt"
@@ -11,11 +11,6 @@ func StringToObjectID(id string) (primitive.ObjectID, error) {
 		return primitive.NilObjectID, fmt.Errorf("empty id")
 	}
 	return primitive.ObjectIDFromHex(id)
-}
-
-func IsValidObjectID(id string) bool {
-	_, err := primitive.ObjectIDFromHex(id)
-	return err == nil
 }
 
 func GenerateTestID() primitive.ObjectID {

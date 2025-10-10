@@ -4,4 +4,4 @@
 logs
 *.log
 
-resources/gitlab_access_token.txt
+qdrant_data

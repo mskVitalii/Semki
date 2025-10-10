@@ -1,18 +1,18 @@
 package service
 
 import (
-	"dwt/internal/adapter/mongo"
-	"dwt/internal/controller/http/v1/dto"
-	"dwt/internal/controller/http/v1/routes"
-	"dwt/internal/model"
-	utilsJwt "dwt/internal/utils/jwt"
-	"dwt/pkg/google"
-	"dwt/pkg/lib"
 	"encoding/json"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"net/http"
+	"semki/internal/adapter/mongo"
+	"semki/internal/controller/http/v1/dto"
+	"semki/internal/controller/http/v1/routes"
+	"semki/internal/model"
+	utilsJwt "semki/internal/utils/jwt"
+	"semki/pkg/google"
+	"semki/pkg/lib"
 )
 
 // authService - dependent services

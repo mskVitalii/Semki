@@ -1,9 +1,9 @@
 package service
 
 import (
-	"dwt/internal/controller/http/v1/routes"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"semki/internal/controller/http/v1/routes"
 	"time"
 )
 
