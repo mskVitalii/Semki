@@ -1,8 +1,9 @@
 package routes
 
 import (
-	jwt "github.com/appleboy/gin-jwt/v2"
+	jwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/model"
 )
@@ -17,10 +18,12 @@ const (
 )
 
 type IAuthService interface {
-	LoginHandler(c *gin.Context, request dto.LoginRequest) (*model.User, error)
+	LoginHandler(c *gin.Context)
 	LogoutHandler(c *gin.Context)
 	RefreshTokenHandler(c *gin.Context)
 	ClaimsHandler(c *gin.Context)
+
+	Authenticate(request dto.LoginRequest) (*model.User, error)
 }
 
 type IGoogleAuthService interface {
@@ -31,15 +34,21 @@ type IGoogleAuthService interface {
 func RegisterAuthRoutes(g *gin.RouterGroup,
 	authService IAuthService,
 	googleService IGoogleAuthService,
-	sec *jwt.GinJWTMiddleware) {
+	authMiddleware *jwt.GinJWTMiddleware,
+	withAuth gin.HandlerFunc,
+	logoutHandler gin.HandlerFunc) {
 
-	g.POST(login, func(c *gin.Context) {
-		c.Set("authMiddleware", sec)
-		sec.LoginHandler(c)
-	})
-	g.POST(logout, sec.MiddlewareFunc(), authService.LogoutHandler)
-	g.GET(refreshToken, sec.MiddlewareFunc(), sec.RefreshHandler)
+	g.POST(login, authMiddleware.LoginHandler)
+	g.POST(logout, withAuth, logoutHandler)
+	g.POST(refreshToken, authMiddleware.RefreshHandler)
 	g.GET(googleLogin, googleService.GoogleLoginHandler)
+	g.OPTIONS(googleLogin, func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		c.Status(http.StatusOK)
+	})
+
 	g.GET(GoogleCallback, googleService.GoogleAuthCallback)
-	g.GET(claims, sec.MiddlewareFunc(), authService.ClaimsHandler)
+	g.GET(claims, withAuth, authService.ClaimsHandler)
 }

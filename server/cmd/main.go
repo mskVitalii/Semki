@@ -22,7 +22,7 @@ import (
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/service"
 	"semki/internal/utils/config"
-	"semki/internal/utils/jwt"
+	"semki/internal/utils/jwtUtils"
 	"semki/pkg/clients"
 	google2 "semki/pkg/google"
 	"semki/pkg/telemetry"
@@ -39,6 +39,7 @@ import (
 // @securityDefinitions.apikey	BearerAuth
 // @in							header
 // @name						Authorization
+// @description				Type "Bearer" followed by a space and JWT token.
 func main() {
 	cfg := config.GetConfig("")
 	startup(cfg)
@@ -81,6 +82,9 @@ func startup(cfg *config.Config) {
 		telemetry.Log.Fatal("failed to connect MongoDB", zap.Error(err))
 	}
 
+	redis := clients.ConnectToRedis(cfg)
+	defer redis.Close()
+
 	qdrantRepo := qdrant.New(cfg, vectorDb)
 	mongoRepo := mongo.New(cfg, db)
 	statusService := service.NewStatusService()
@@ -89,14 +93,17 @@ func startup(cfg *config.Config) {
 	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
 
 	authService := service.NewAuthService(mongoRepo)
-	auth := jwt.Startup(cfg, authService)
+	authMiddleware := jwtUtils.Startup(cfg, authService)
+	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
+	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
+
 	var googleAuthService routes.IGoogleAuthService
 	if cfg.Google.Enabled {
 		google := google2.InitGoogleOAuth(
 			cfg.Protocol+"://"+cfg.Host+":"+cfg.Port+"/api/v1"+routes.GoogleCallback,
 			cfg.Google.ClientID,
 			cfg.Google.ClientSecret)
-		googleAuthService = service.NewGoogleAuthService(mongoRepo, google, auth, cfg.FrontendUrl)
+		googleAuthService = service.NewGoogleAuthService(mongoRepo, google, authMiddleware, cfg.FrontendUrl)
 	}
 	// endregion
 
@@ -138,7 +145,7 @@ func startup(cfg *config.Config) {
 		"http://localhost:8080"}
 	corsCfg.AllowCredentials = true
 	corsCfg.AddExposeHeaders(telemetry.TraceHeader)
-	corsCfg.AddAllowHeaders(jwt.AuthorizationHeader)
+	corsCfg.AddAllowHeaders(jwtUtils.AuthorizationHeader)
 	r.Use(cors.New(corsCfg))
 
 	r.Use(otelgin.Middleware(cfg.Service))
@@ -148,16 +155,16 @@ func startup(cfg *config.Config) {
 	// endregion
 
 	// region ROUTES
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	registerSwagger(r)
 
 	apiV1 := r.Group("/api/v1")
 	{
 		routes.RegisterStatusRoutes(apiV1, statusService)
-		routes.RegisterUserRoutes(apiV1, userService, auth)
-		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, auth)
-		routes.RegisterSearchRoutes(apiV1, searchService, auth)
+		routes.RegisterUserRoutes(apiV1, userService, withAuth)
+		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, authMiddleware, withAuth, logoutHandler)
+		routes.RegisterSearchRoutes(apiV1, searchService, withAuth, redis)
 	}
-	r.NoRoute(auth.MiddlewareFunc(), jwt.NoRoute)
+	r.NoRoute(jwtUtils.NoRoute)
 	// endregion
 
 	// region IGNITION
@@ -185,4 +192,14 @@ func startup(cfg *config.Config) {
 	err = srv.Shutdown(context.Background())
 	return
 	// endregion
+}
+
+func registerSwagger(r *gin.Engine) {
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler,
+		ginSwagger.URL("/swagger/doc.json"),
+		ginSwagger.DefaultModelsExpandDepth(-1),
+		ginSwagger.PersistAuthorization(true),
+		ginSwagger.DocExpansion("list"),
+		ginSwagger.DeepLinking(true),
+	))
 }

@@ -1,14 +1,15 @@
 package service
 
 import (
+	"context"
 	"errors"
+	jwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"semki/internal/adapter/mongo"
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
-	jwt2 "semki/internal/utils/jwt"
 	"semki/pkg/lib"
 )
 
@@ -26,13 +27,14 @@ func NewAuthService(mongoRepo mongo.IMongoRepository) routes.IAuthService {
 //	@Summary		Refreshes the authentication token
 //	@Description	Generates a new authentication token using the refresh token provided.
 //	@Tags			auth
+//	@Accept			json
+//	@Param			refresh_token	body	dto.RefreshTokenRequest	true	"Refresh token"
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{object}	dto.SuccessRefreshTokenResponse	"Successful response with new token"
 //	@Failure		401	{object}	dto.UnauthorizedResponse	"Unauthorized"
-//	@Router			/api/v1/refresh_token [get]
+//	@Router			/api/v1/refresh_token [post]
 func (s *authService) RefreshTokenHandler(_ *gin.Context) {
-	// This method for swagger. Token refresh happens inside jwt.go
+	// This method for swagger. Token refresh happens inside jwtUtils.go
 }
 
 // LogoutHandler godoc
@@ -40,17 +42,15 @@ func (s *authService) RefreshTokenHandler(_ *gin.Context) {
 //	@Summary		Logs out a user and invalidates the JWT token
 //	@Description	Invalidates the JWT token for the user by adding it to the blacklist and removes the JWT cookie.
 //	@Tags			auth
+//	@Param			refresh_token	body	dto.LogoutRequest	true	"Refresh token"
+//	@Accept			json
 //	@Produce		json
-//	@Success		200		{object}	dto.SuccessLogoutResponse	"Successful logout"
-//	@Failure		400		{object}	lib.ErrorResponse		"Bad Request"
+//	@Security		BearerAuth
+//	@Success		200	{object}	dto.SuccessLogoutResponse	"Successful logout"
+//	@Failure		400	{object}	lib.ErrorResponse			"Bad Request"
 //	@Router			/api/v1/logout [post]
-func (s *authService) LogoutHandler(c *gin.Context) {
-	if err := jwt2.AddTokenToBlackList(c); err != nil {
-		lib.ResponseBadRequest(c, err, "authorization header or cookie required")
-		return
-	}
-	jwt2.CleanUpToken(c)
-	c.JSON(http.StatusOK, dto.SuccessLogoutResponse{Message: "Logged out"})
+func (s *authService) LogoutHandler(_ *gin.Context) {
+	// This method for swagger
 }
 
 // LoginHandler godoc
@@ -61,11 +61,14 @@ func (s *authService) LogoutHandler(c *gin.Context) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			request	body		dto.LoginRequest			true	"Login request body"
-//	@Success		200		{object}	dto.SuccessLoginResponse	"Successful login"
 //	@Failure		401		{object}	dto.UnauthorizedResponse	"Unauthorized"
 //	@Router			/api/v1/login [post]
-func (s *authService) LoginHandler(c *gin.Context, request dto.LoginRequest) (*model.User, error) {
-	ctx := c.Request.Context()
+func (s *authService) LoginHandler(_ *gin.Context) {
+	// This method for swagger
+}
+
+func (s *authService) Authenticate(request dto.LoginRequest) (*model.User, error) {
+	ctx := context.Background()
 	if lib.IsValidEmail(request.Email) == false {
 		return nil, errors.New("invalid email")
 	}
@@ -79,11 +82,11 @@ func (s *authService) LoginHandler(c *gin.Context, request dto.LoginRequest) (*m
 	}
 
 	if user == nil {
-		return nil, errors.New("user: " + request.Email + " not found")
+		return nil, errors.New("user not found")
 	}
 
 	if user.Status == model.UserStatuses.DELETED {
-		return nil, errors.New("user: " + request.Email + " is deleted")
+		return nil, errors.New("user is deleted")
 	}
 
 	if model.ProviderInUserProviders(model.UserProviders.Email, user.Providers) == false {
@@ -93,7 +96,7 @@ func (s *authService) LoginHandler(c *gin.Context, request dto.LoginRequest) (*m
 	if lib.CheckPasswordHash(request.Password, user.Password) {
 		return user, nil
 	} else {
-		return nil, errors.New("invalid password")
+		return nil, errors.New("password is not match")
 	}
 }
 
@@ -104,28 +107,13 @@ func (s *authService) LoginHandler(c *gin.Context, request dto.LoginRequest) (*m
 //	@Tags			auth
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Success		200	{object}	dto.GetUserClaimsResponse	"Successful response with user claims"
+//	@Success		200	{object}	jwtUtils.UserClaims			"Successful response with user claims"
 //	@Failure		401	{object}	dto.UnauthorizedResponse	"Unauthorized"
 //	@Failure		401	{object}	dto.UnauthorizedResponse	"No claims found"
 //	@Failure		401	{object}	dto.UnauthorizedResponse	"Invalid claims type"
 //	@Failure		500	{object}	dto.UnauthorizedResponse	"Internal server error"
 //	@Router			/api/v1/claims [get]
 func (s *authService) ClaimsHandler(c *gin.Context) {
-	claimsRaw, exists := c.Get(jwt2.IdentityKey)
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "No claims found"})
-		return
-	}
-
-	claims, ok := claimsRaw.(*jwt2.UserClaims)
-	if !ok {
-		c.JSON(http.StatusInternalServerError, dto.UnauthorizedResponse{Message: "Invalid claims type"})
-		return
-	}
-
-	c.JSON(http.StatusOK, dto.GetUserClaimsResponse{
-		Id:               claims.Id,
-		OrganizationRole: claims.OrganizationRole,
-		OrganizationId:   claims.OrganizationId,
-	})
+	claimsRaw := jwt.ExtractClaims(c)
+	c.JSON(http.StatusOK, claimsRaw)
 }

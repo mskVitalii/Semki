@@ -19,15 +19,6 @@ definitions:
       message:
         type: string
     type: object
-  dto.GetUserClaimsResponse:
-    properties:
-      id:
-        type: string
-      organizationId:
-        type: string
-      organizationRole:
-        type: string
-    type: object
   dto.GetUserResponse:
     properties:
       _id:
@@ -60,32 +51,44 @@ definitions:
   dto.LoginRequest:
     properties:
       email:
+        example: msk.vitaly@gmail.com
         type: string
       organization:
+        example: Staffbase
         type: string
       password:
+        example: defaultPassword
         type: string
     required:
     - email
     - organization
     - password
     type: object
-  dto.SuccessLoginResponse:
+  dto.LogoutRequest:
     properties:
-      expire:
+      refresh_token:
         type: string
-      message:
+    required:
+    - refresh_token
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
         type: string
+    required:
+    - refresh_token
+    type: object
+  dto.SearchResultWithUserAndDescription:
+    properties:
+      description:
+        type: string
+      score:
+        type: number
+      user:
+        $ref: '#/definitions/model.User'
     type: object
   dto.SuccessLogoutResponse:
     properties:
-      message:
-        type: string
-    type: object
-  dto.SuccessRefreshTokenResponse:
-    properties:
-      expire:
-        type: string
       message:
         type: string
     type: object
@@ -97,6 +100,15 @@ definitions:
   dto.UpdateUserResponse:
     properties:
       message:
+        type: string
+    type: object
+  jwtUtils.UserClaims:
+    properties:
+      organizationId:
+        type: string
+      organizationRole:
+        type: string
+      sub:
         type: string
     type: object
   lib.ErrorResponse:
@@ -155,15 +167,6 @@ definitions:
       team:
         type: string
     type: object
-  service.SearchResultWithUserAndDescription:
-    properties:
-      description:
-        type: string
-      score:
-        type: number
-      user:
-        $ref: '#/definitions/model.User'
-    type: object
 info:
   contact:
     email: msk.vitaly@gmail.com
@@ -182,7 +185,7 @@ paths:
         "200":
           description: Successful response with user claims
           schema:
-            $ref: '#/definitions/dto.GetUserClaimsResponse'
+            $ref: '#/definitions/jwtUtils.UserClaims'
         "401":
           description: Invalid claims type
           schema:
@@ -235,10 +238,6 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: Successful login
-          schema:
-            $ref: '#/definitions/dto.SuccessLoginResponse'
         "401":
           description: Unauthorized
           schema:
@@ -248,8 +247,17 @@ paths:
       - auth
   /api/v1/logout:
     post:
+      consumes:
+      - application/json
       description: Invalidates the JWT token for the user by adding it to the blacklist
         and removes the JWT cookie.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LogoutRequest'
       produces:
       - application/json
       responses:
@@ -261,19 +269,26 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Logs out a user and invalidates the JWT token
       tags:
       - auth
   /api/v1/refresh_token:
-    get:
+    post:
+      consumes:
+      - application/json
       description: Generates a new authentication token using the refresh token provided.
+      parameters:
+      - description: Refresh token
+        in: body
+        name: refresh_token
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: Successful response with new token
-          schema:
-            $ref: '#/definitions/dto.SuccessRefreshTokenResponse'
         "401":
           description: Unauthorized
           schema:
@@ -325,19 +340,25 @@ paths:
         "200":
           description: Streamed search results with semantic descriptions
           schema:
-            $ref: '#/definitions/service.SearchResultWithUserAndDescription'
+            $ref: '#/definitions/dto.SearchResultWithUserAndDescription'
         "400":
           description: Invalid query parameters
           schema:
             additionalProperties:
               type: string
             type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
         "500":
           description: Internal server error during search or embedding
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: Semantic user search
       tags:
       - search
@@ -483,6 +504,7 @@ paths:
       - service
 securityDefinitions:
   BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
     in: header
     name: Authorization
     type: apiKey

@@ -8,7 +8,7 @@ import (
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
-	"semki/internal/utils/jwt"
+	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
 )
@@ -56,6 +56,10 @@ func (s *userService) CreateUser(c *gin.Context) {
 		lib.ResponseInternalServerError(c, err, "Failed to check user existence")
 		return
 	}
+
+	// TODO: return User
+	// TODO: return token
+
 	// Adding provider Email & Password
 	if userByEmail != nil {
 		if model.ProviderInUserProviders(model.UserProviders.Email, userByEmail.Providers) {
@@ -81,8 +85,6 @@ func (s *userService) CreateUser(c *gin.Context) {
 		return
 	}
 
-	// TODO: return User
-
 	c.JSON(http.StatusCreated, dto.CreateUserResponse{Message: "User created"})
 }
 
@@ -107,14 +109,14 @@ func (s *userService) GetUser(c *gin.Context) {
 		return
 	}
 
-	userClaims, _ := c.Get(jwt.IdentityKey)
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{
 			Message: "unauthorized",
 		})
 		return
 	}
-	userId := userClaims.(*jwt.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).Id
 	if userId != paramObjectId {
 		c.JSON(http.StatusForbidden, dto.UnauthorizedResponse{Message: "Forbidden"})
 		return
@@ -179,12 +181,12 @@ func (s *userService) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	userClaims, _ := c.Get(jwt.IdentityKey)
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	userId := userClaims.(*jwt.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).Id
 
 	if userId != user.Id || userId != paramObjectId {
 		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be the same user")
@@ -230,6 +232,7 @@ func (s *userService) UpdateUser(c *gin.Context) {
 //	@Failure		500	{object}	lib.ErrorResponse			"Internal server error"
 //	@Router			/api/v1/user/{id} [delete]
 func (s *userService) DeleteUser(c *gin.Context) {
+	// TODO: Active true/false
 	id := c.Param("id")
 	ctx := c.Request.Context()
 	paramObjectId, err := mongoUtils.StringToObjectID(id)
@@ -238,12 +241,12 @@ func (s *userService) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	userClaims, _ := c.Get(jwt.IdentityKey)
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	userId := userClaims.(*jwt.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).Id
 	if userId != paramObjectId {
 		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be for the same user")
 		return
@@ -254,6 +257,10 @@ func (s *userService) DeleteUser(c *gin.Context) {
 		return
 	}
 
-	jwt.CleanUpToken(c)
+	//if err := jwtUtils.AddTokenToBlackListFromGinContext(c); err != nil {
+	//	lib.ResponseBadRequest(c, err, "authorization header required")
+	//	return
+	//}
+
 	c.JSON(http.StatusOK, dto.DeleteUserResponse{Message: "User deleted"})
 }

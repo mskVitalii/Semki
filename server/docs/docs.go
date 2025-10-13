@@ -38,7 +38,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Successful response with user claims",
                         "schema": {
-                            "$ref": "#/definitions/dto.GetUserClaimsResponse"
+                            "$ref": "#/definitions/jwtUtils.UserClaims"
                         }
                     },
                     "401": {
@@ -116,12 +116,6 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "Successful login",
-                        "schema": {
-                            "$ref": "#/definitions/dto.SuccessLoginResponse"
-                        }
-                    },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
@@ -133,7 +127,15 @@ const docTemplate = `{
         },
         "/api/v1/logout": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Invalidates the JWT token for the user by adding it to the blacklist and removes the JWT cookie.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -141,6 +143,17 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Logs out a user and invalidates the JWT token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.LogoutRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Successful logout",
@@ -158,13 +171,16 @@ const docTemplate = `{
             }
         },
         "/api/v1/refresh_token": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
                 "description": "Generates a new authentication token using the refresh token provided.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -172,13 +188,18 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Refreshes the authentication token",
-                "responses": {
-                    "200": {
-                        "description": "Successful response with new token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "refresh_token",
+                        "in": "body",
+                        "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.SuccessRefreshTokenResponse"
+                            "$ref": "#/definitions/dto.RefreshTokenRequest"
                         }
-                    },
+                    }
+                ],
+                "responses": {
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
@@ -190,6 +211,11 @@ const docTemplate = `{
         },
         "/api/v1/search": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Performs a semantic search for users using text embeddings and optional filters.",
                 "consumes": [
                     "application/json"
@@ -249,7 +275,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Streamed search results with semantic descriptions",
                         "schema": {
-                            "$ref": "#/definitions/service.SearchResultWithUserAndDescription"
+                            "$ref": "#/definitions/dto.SearchResultWithUserAndDescription"
                         }
                     },
                     "400": {
@@ -259,6 +285,12 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UnauthorizedResponse"
                         }
                     },
                     "500": {
@@ -522,20 +554,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.GetUserClaimsResponse": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "organizationId": {
-                    "type": "string"
-                },
-                "organizationRole": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.GetUserResponse": {
             "type": "object",
             "properties": {
@@ -589,41 +607,58 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "msk.vitaly@gmail.com"
                 },
                 "organization": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Staffbase"
                 },
                 "password": {
+                    "type": "string",
+                    "example": "defaultPassword"
+                }
+            }
+        },
+        "dto.LogoutRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
                     "type": "string"
                 }
             }
         },
-        "dto.SuccessLoginResponse": {
+        "dto.RefreshTokenRequest": {
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.SearchResultWithUserAndDescription": {
             "type": "object",
             "properties": {
-                "expire": {
+                "description": {
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
+                "score": {
+                    "type": "number"
+                },
+                "user": {
+                    "$ref": "#/definitions/model.User"
                 }
             }
         },
         "dto.SuccessLogoutResponse": {
             "type": "object",
             "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "dto.SuccessRefreshTokenResponse": {
-            "type": "object",
-            "properties": {
-                "expire": {
-                    "type": "string"
-                },
                 "message": {
                     "type": "string"
                 }
@@ -641,6 +676,20 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "jwtUtils.UserClaims": {
+            "type": "object",
+            "properties": {
+                "organizationId": {
+                    "type": "string"
+                },
+                "organizationRole": {
+                    "type": "string"
+                },
+                "sub": {
                     "type": "string"
                 }
             }
@@ -730,24 +779,11 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "service.SearchResultWithUserAndDescription": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "score": {
-                    "type": "number"
-                },
-                "user": {
-                    "$ref": "#/definitions/model.User"
-                }
-            }
         }
     },
     "securityDefinitions": {
         "BearerAuth": {
+            "description": "Type \"Bearer\" followed by a space and JWT token.",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

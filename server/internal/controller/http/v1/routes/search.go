@@ -1,8 +1,10 @@
 package routes
 
 import (
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"semki/internal/utils/rateLimit"
+	"time"
 )
 
 const (
@@ -13,6 +15,6 @@ type ISearchService interface {
 	Search(ctx *gin.Context)
 }
 
-func RegisterSearchRoutes(g *gin.RouterGroup, service ISearchService, securityHandler *jwt.GinJWTMiddleware) {
-	g.GET(Search, service.Search)
+func RegisterSearchRoutes(g *gin.RouterGroup, service ISearchService, sec gin.HandlerFunc, rds *redis.Client) {
+	g.GET(Search, rateLimit.RedisRateLimit(rds, 10, time.Minute, Search), sec, service.Search)
 }

@@ -8,8 +8,8 @@ import (
 	"io"
 	"semki/internal/adapter/mongo"
 	"semki/internal/adapter/qdrant"
+	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
-	"semki/internal/model"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
 	"strconv"
@@ -39,44 +39,27 @@ func NewSearchService(
 	}
 }
 
-// SearchRequest represents the search query parameters
-type SearchRequest struct {
-	Query     string   `form:"q" json:"q"`                    // Текстовый запрос
-	Teams     []string `form:"teams" json:"teams"`            // Фильтр по командам
-	Levels    []string `form:"levels" json:"levels"`          // Фильтр по уровням
-	Locations []string `form:"locations" json:"locations"`    // Фильтр по локациям
-	Limit     uint64   `form:"limit,default=10" json:"limit"` // Лимит результатов
-}
-
-type SearchResultWithUser struct {
-	Score float32     `json:"score"`
-	User  *model.User `json:"user"`
-}
-
-type SearchResultWithUserAndDescription struct {
-	*SearchResultWithUser
-	Description string `json:"description,omitempty"`
-}
-
 // Search godoc
 //
 //	@Summary		Semantic user search
 //	@Description	Performs a semantic search for users using text embeddings and optional filters.
 //					Results are streamed one by one with optional AI-generated descriptions.
 //	@Tags			search
+//	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		text/event-stream
-//	@Param			q			query		string								false	"Search query text for semantic similarity"
-//	@Param			teams		query		[]string							false	"Filter users by team names (can be multiple)"
-//	@Param			levels		query		[]string							false	"Filter users by experience levels (can be multiple)"
-//	@Param			locations	query		[]string							false	"Filter users by locations (can be multiple)"
-//	@Param			limit		query		int									false	"Maximum number of users to return (default 5, max 20)"
-//	@Success		200			{object}	SearchResultWithUserAndDescription	"Streamed search results with semantic descriptions"
-//	@Failure		400			{object}	map[string]string					"Invalid query parameters"
-//	@Failure		500			{object}	map[string]string					"Internal server error during search or embedding"
+//	@Param			q			query		string									false	"Search query text for semantic similarity"
+//	@Param			teams		query		[]string								false	"Filter users by team names (can be multiple)"
+//	@Param			levels		query		[]string								false	"Filter users by experience levels (can be multiple)"
+//	@Param			locations	query		[]string								false	"Filter users by locations (can be multiple)"
+//	@Param			limit		query		int										false	"Maximum number of users to return (default 5, max 20)"
+//	@Success		200			{object}	dto.SearchResultWithUserAndDescription	"Streamed search results with semantic descriptions"
+//	@Failure		400			{object}	map[string]string						"Invalid query parameters"
+//	@Failure		401			{object}	dto.UnauthorizedResponse				"Unauthorized"
+//	@Failure		500			{object}	map[string]string						"Internal server error during search or embedding"
 //	@Router			/api/v1/search [get]
 func (s *searchService) Search(ctx *gin.Context) {
-	var req SearchRequest
+	var req dto.SearchRequest
 	if err := parseSearchRequest(ctx, &req); err != nil {
 		s.logger.Error("Failed to parse search request: " + err.Error())
 		lib.ResponseBadRequest(ctx, err, "Invalid search parameters")
@@ -130,7 +113,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 
 	// TODO: use LLMService to get the description
 	// TODO: stream the SearchResultWithUser one-by-one in goroutines
-	results := make([]SearchResultWithUser, 0, len(users))
+	results := make([]dto.SearchResultWithUser, 0, len(users))
 	for _, res := range vectorSearchResults {
 		oid, err := mongoUtils.StringToObjectID(res.UserID)
 		if err != nil {
@@ -138,7 +121,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 		}
 		for _, u := range users {
 			if u.Id == oid {
-				results = append(results, SearchResultWithUser{
+				results = append(results, dto.SearchResultWithUser{
 					Score: res.Score,
 					User:  u,
 				})
@@ -148,19 +131,19 @@ func (s *searchService) Search(ctx *gin.Context) {
 	}
 
 	ctx.Stream(func(w io.Writer) bool {
-		resultsChan := make(chan SearchResultWithUserAndDescription)
+		resultsChan := make(chan dto.SearchResultWithUserAndDescription)
 		go func() {
 			defer close(resultsChan)
 			var wg sync.WaitGroup
 			for _, res := range results {
 				wg.Add(1)
-				go func(res SearchResultWithUser) {
+				go func(res dto.SearchResultWithUser) {
 					defer wg.Done()
 
 					desc := "TODO s.llmService.DescribeUser(ctx, user)"
 					//desc, _ := s.llmService.DescribeUser(ctx, user)
-					resultsChan <- SearchResultWithUserAndDescription{
-						SearchResultWithUser: &SearchResultWithUser{
+					resultsChan <- dto.SearchResultWithUserAndDescription{
+						SearchResultWithUser: &dto.SearchResultWithUser{
 							Score: res.Score,
 							User:  res.User,
 						},
@@ -181,7 +164,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 
 // parseSearchRequest parses search parameters from query string
 // Formats: ?teams=team1,team2 или ?teams[]=team1&teams[]=team2
-func parseSearchRequest(ctx *gin.Context, req *SearchRequest) error {
+func parseSearchRequest(ctx *gin.Context, req *dto.SearchRequest) error {
 	req.Query = ctx.Query("q")
 
 	// Teams

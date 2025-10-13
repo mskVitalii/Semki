@@ -1,7 +1,6 @@
 package routes
 
 import (
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,9 +15,9 @@ type IUserService interface {
 	DeleteUser(c *gin.Context)
 }
 
-func RegisterUserRoutes(g *gin.RouterGroup, userService IUserService, securityHandler *jwt.GinJWTMiddleware) {
+func RegisterUserRoutes(g *gin.RouterGroup, userService IUserService, securityHandler gin.HandlerFunc) {
 	g.POST(userCRUD, userService.CreateUser)
-	g.GET(userCRUD+"/:id", securityHandler.MiddlewareFunc(), userService.GetUser)
-	g.PUT(userCRUD+"/:id", securityHandler.MiddlewareFunc(), userService.UpdateUser)
-	g.DELETE(userCRUD+"/:id", securityHandler.MiddlewareFunc(), userService.DeleteUser)
+	g.GET(userCRUD+"/:id", securityHandler, userService.GetUser)
+	g.PUT(userCRUD+"/:id", securityHandler, userService.UpdateUser)
+	g.DELETE(userCRUD+"/:id", securityHandler, userService.DeleteUser)
 }

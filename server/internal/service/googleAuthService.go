@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	jwt "github.com/appleboy/gin-jwt/v2"
+	jwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
 	"net/http"
@@ -10,9 +10,9 @@ import (
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
-	utilsJwt "semki/internal/utils/jwt"
+	"semki/internal/utils/jwtUtils"
 	"semki/pkg/google"
-	"semki/pkg/lib"
+	"semki/pkg/telemetry"
 )
 
 // authService - dependent services
@@ -27,7 +27,8 @@ func NewGoogleAuthService(
 	mongoRepo mongo.IMongoRepository,
 	google google.Google,
 	jwtAuth *jwt.GinJWTMiddleware,
-	frontendUrl string) routes.IGoogleAuthService {
+	frontendUrl string,
+) routes.IGoogleAuthService {
 
 	return &googleAuthService{mongoRepo, google, jwtAuth, frontendUrl}
 }
@@ -38,7 +39,7 @@ func NewGoogleAuthService(
 //	@Tags		auth
 //	@Router		/api/v1/google/login [get]
 func (s *googleAuthService) GoogleLoginHandler(c *gin.Context) {
-	url := s.google.OAuthConfig.AuthCodeURL("state-string", oauth2.AccessTypeOffline)
+	url := s.google.OAuthConfig.AuthCodeURL("state-string", oauth2.AccessTypeOffline, oauth2.ApprovalForce)
 	c.Redirect(http.StatusTemporaryRedirect, url)
 }
 
@@ -57,46 +58,49 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	ctx := c.Request.Context()
 	code := c.Query("code")
 	if code == "" {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-code")
 		return
 	}
 	token, err := s.google.OAuthConfig.Exchange(ctx, code)
 	if err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error")
+		telemetry.Log.Error("Exchange error: " + err.Error())
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-token")
 		return
 	}
 
 	client := s.google.OAuthConfig.Client(ctx, token)
 	userInfo, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error")
+		telemetry.Log.Error("Userinfo error" + err.Error())
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-userinfo")
 		return
 	}
 	defer userInfo.Body.Close()
 
 	var user dto.CreateUserByGoogleProvider
 	if err = json.NewDecoder(userInfo.Body).Decode(&user); err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+		telemetry.Log.Error("Userinfo error" + err.Error())
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-body")
 		return
 	}
 
 	// DB
 	userFromDb, err := s.mongoRepo.GetUserByEmail(ctx, user.Email)
 	if err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-db")
 		return
 	}
 
 	if userFromDb == nil {
 		userFromDb = dto.NewUserFromGoogleProvider(user)
 		if err := s.mongoRepo.CreateUser(ctx, *userFromDb); err != nil {
-			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-create-user")
 			return
 		}
 	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDb.Providers) == false {
 		userFromDb.Providers = append(userFromDb.Providers, model.UserProviders.Google)
 		if err := s.mongoRepo.UpdateUser(ctx, userFromDb.Id, *userFromDb); err != nil {
-			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-update-provider")
 			return
 		}
 	}
@@ -107,14 +111,14 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// Token
-	jwtToken, _, err := s.jwtAuth.TokenGenerator(userFromDb)
+	// TODO: share this way to user creation
+	claims, err := jwtUtils.UserToPayload(userFromDb)
+	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
 	if err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+		telemetry.Log.Error(err.Error())
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-token")
 		return
 	}
-	maxAge := int(s.jwtAuth.Timeout.Seconds())
-	domain, _ := lib.GetDomainFromURL(s.frontendUrl)
 
-	c.SetCookie(utilsJwt.AuthorizationCookie, jwtToken, maxAge, "/", domain, false, true)
-	c.Redirect(http.StatusFound, s.frontendUrl)
+	c.Redirect(http.StatusFound, s.frontendUrl+"/login?accessToken="+jwtToken.AccessToken+"&refresh="+jwtToken.RefreshToken)
 }

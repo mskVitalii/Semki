@@ -95,6 +95,23 @@ services:
     networks:
       - semki_network
 
+  redis:
+    image: redis:7
+    container_name: semki-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - semki_network
+    env_file: .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 10s
+      timeout: 2s
+      retries: 5
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
+
+
   # ----------------------------------- INFRA
   # [MONITORING] Prometheus
   prometheus:

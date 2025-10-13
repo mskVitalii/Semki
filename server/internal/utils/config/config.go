@@ -56,6 +56,12 @@ type JaegerConfig struct {
 	Enabled bool
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+}
+
 // Config - app.yml + .env for secrets & dev/prod values
 type Config struct {
 	*AppConfig
@@ -68,6 +74,7 @@ type Config struct {
 	Jaeger           JaegerConfig
 	Qdrant           QdrantConfig
 	Embedder         EmbedderConfig
+	Redis            RedisConfig
 	PyroscopeAddress string
 	FrontendUrl      string
 	JsonLog          bool
@@ -139,6 +146,10 @@ func GetConfig(rootPath string) *Config {
 		instance.Qdrant.GrpcPort = getEnvKeyInt("QDRANT_GRPC_PORT")
 		instance.Qdrant.HttpPort = getEnvKeyInt("QDRANT_HTTP_PORT")
 
+		instance.Redis.Host = getEnvKey("REDIS_HOST")
+		instance.Redis.Password = getEnvKey("REDIS_PASSWORD")
+		instance.Redis.Port = getEnvKeyInt("REDIS_PORT")
+
 		instance.Embedder.Host = getEnvKey("EMBEDDER_HOST")
 		instance.Embedder.Port = getEnvKeyInt("EMBEDDER_PORT")
 		instance.Embedder.Url = fmt.Sprintf("http://%s:%d", instance.Embedder.Host, instance.Embedder.Port)
@@ -156,19 +167,19 @@ func getEnvKey(key string) string {
 	if value, exists := os.LookupEnv(key); exists {
 		return value
 	}
-	log.Fatalf("[getEnvKey] no value for " + key)
+	log.Fatalf("[getEnvKey] no value for %s", key)
 	return ""
 }
 
 func getEnvKeyInt(key string) int {
 	value, exists := os.LookupEnv(key)
 	if !exists {
-		log.Fatalf("[getEnvKeyInt] no value for " + key)
+		log.Fatalf("[getEnvKeyInt] no value for %s", key)
 	}
 
 	num, err := strconv.Atoi(value)
 	if err != nil {
-		log.Fatalf("[getEnvKeyInt] cannot convert to int " + value)
+		log.Fatalf("[getEnvKeyInt] cannot convert to int: %s", value)
 	}
 
 	return num
