@@ -1,4 +1,10 @@
 import {
+  mockUser,
+  type Organization,
+  type User,
+  UserStatuses,
+} from '@/utils/types'
+import {
   Badge,
   Button,
   Collapse,
@@ -15,7 +21,6 @@ import {
 import { useDisclosure, useListState } from '@mantine/hooks'
 import { useMemo, useState } from 'react'
 import { v4 as uuid } from 'uuid'
-import { mockUser, type Organization, type User, UserStatuses } from '../types'
 import OrganizationNewUserForm from './OrganizationNewUserForm'
 
 type InvitationFormProps = {

@@ -7,7 +7,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import image from '../media/image_hero.svg'
+import image from '@/media/image_hero.svg'
 import Logo from './Logo'
 
 export function Hero() {

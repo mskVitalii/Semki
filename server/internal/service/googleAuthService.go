@@ -51,20 +51,20 @@ func (s *googleAuthService) GoogleLoginHandler(c *gin.Context) {
 func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	state := c.Query("state")
 	if state != "state-string" {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error")
 		return
 	}
 
 	ctx := c.Request.Context()
 	code := c.Query("code")
 	if code == "" {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-code")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=google-error-code")
 		return
 	}
 	token, err := s.google.OAuthConfig.Exchange(ctx, code)
 	if err != nil {
 		telemetry.Log.Error("Exchange error: " + err.Error())
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-token")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=google%20error%20token")
 		return
 	}
 
@@ -72,7 +72,7 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	userInfo, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
 	if err != nil {
 		telemetry.Log.Error("Userinfo error" + err.Error())
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/google-error-userinfo")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=google%20error%20userinfo")
 		return
 	}
 	defer userInfo.Body.Close()
@@ -80,33 +80,33 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	var user dto.CreateUserByGoogleProvider
 	if err = json.NewDecoder(userInfo.Body).Decode(&user); err != nil {
 		telemetry.Log.Error("Userinfo error" + err.Error())
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-body")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20body")
 		return
 	}
 
 	// DB
 	userFromDb, err := s.mongoRepo.GetUserByEmail(ctx, user.Email)
 	if err != nil {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-db")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20db")
 		return
 	}
 
 	if userFromDb == nil {
 		userFromDb = dto.NewUserFromGoogleProvider(user)
 		if err := s.mongoRepo.CreateUser(ctx, *userFromDb); err != nil {
-			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-create-user")
+			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
 	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDb.Providers) == false {
 		userFromDb.Providers = append(userFromDb.Providers, model.UserProviders.Google)
 		if err := s.mongoRepo.UpdateUser(ctx, userFromDb.Id, *userFromDb); err != nil {
-			c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-update-provider")
+			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20update%20provider")
 			return
 		}
 	}
 
 	if userFromDb.Status == model.UserStatuses.DELETED {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/user-deleted")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=user%20deleted")
 		return
 	}
 
@@ -116,7 +116,7 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login/internal-error-token")
+		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
 		return
 	}
 

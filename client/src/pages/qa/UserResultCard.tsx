@@ -1,6 +1,6 @@
 import { Badge, Group, Paper, Stack, Text } from '@mantine/core'
 import { IconHash } from '@tabler/icons-react'
-import type { SearchResult } from '../types'
+import type { SearchResult } from '@/utils/types'
 import Interpretation from './Interpretation'
 
 type UserResultCardProps = {

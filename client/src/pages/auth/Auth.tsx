@@ -1,3 +1,6 @@
+import { login, type AuthErrorResponse } from '@/api/auth'
+import { useAuthStore } from '@/stores/authStore'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Anchor,
   Button,
@@ -5,23 +8,60 @@ import {
   Divider,
   Group,
   Paper,
-  type PaperProps,
   PasswordInput,
   Stack,
   Text,
   TextInput,
+  type PaperProps,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import { upperFirst, useToggle } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
+import { useMutation } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
+import { useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { GoogleButton } from './GoogleIcon'
 
 export function Auth(props: PaperProps) {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { accessToken, setAuth } = useAuthStore()
   const [type, toggle] = useToggle(['login', 'register'])
+  const { organizationDomain } = useOrganizationStore()
+
+  useEffect(() => {
+    const accessTokenFromUrl = searchParams.get('accessToken')
+    const refreshTokenFromUrl = searchParams.get('refresh')
+    const errorFromUrl = searchParams.get('error')
+
+    if (errorFromUrl) {
+      notifications.show({
+        title: 'Authentication Error',
+        message: decodeURIComponent(errorFromUrl),
+        color: 'red',
+        autoClose: false,
+      })
+      navigate('/login', { replace: true })
+      return
+    }
+
+    if (accessTokenFromUrl && refreshTokenFromUrl) {
+      setAuth(accessTokenFromUrl, refreshTokenFromUrl)
+      navigate('/qa', { replace: true })
+      return
+    }
+
+    if (accessToken) {
+      navigate('/qa')
+    }
+  }, [accessToken, navigate, searchParams, setAuth])
+
   const form = useForm({
     initialValues: {
-      email: '',
+      email: import.meta.env.VITE_TEST_EMAIL ?? '',
       name: '',
-      password: '',
+      password: import.meta.env.VITE_TEST_PASSWORD ?? '',
       terms: true,
     },
 
@@ -34,16 +74,49 @@ export function Auth(props: PaperProps) {
     },
   })
 
+  const loginMutation = useMutation({
+    mutationFn: login,
+    onSuccess: (data) => {
+      setAuth(data.access_token, data.refresh_token)
+      navigate('/qa')
+    },
+    onError: (error: AxiosError<AuthErrorResponse>) => {
+      console.error(error)
+      notifications.show({
+        title: 'Auth error',
+        message: error.response?.data?.message || 'Wrong email or password',
+        color: 'red',
+      })
+    },
+  })
+
+  const handleSubmit = (values: typeof form.values) => {
+    if (type === 'login') {
+      loginMutation.mutate({
+        email: values.email,
+        password: values.password,
+        organization: organizationDomain,
+      })
+    } else {
+      console.log('Register:', values)
+    }
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen max-w-screen w-screen bg-gray-900">
       <Paper radius="md" p="lg" withBorder {...props}>
-        <Text size="lg" fw={500}>
-          Welcome to Mantine, {type} with
+        <Text size="lg" fw={500} className="first-letter:uppercase">
+          {organizationDomain}'s Semki, {type} with
         </Text>
 
         <Group grow mb="md" mt="md">
-          <GoogleButton radius="xl">Google</GoogleButton>
-          <Button variant="default" radius="xl">
+          <Anchor
+            component="a"
+            href={`${import.meta.env.VITE_API_URL}/api/v1/google/login`}
+          >
+            <GoogleButton radius="xl">Google</GoogleButton>
+          </Anchor>
+          <Button variant="default" radius="xl" disabled>
             SSO
           </Button>
         </Group>
@@ -54,7 +127,7 @@ export function Auth(props: PaperProps) {
           my="lg"
         />
 
-        <form onSubmit={form.onSubmit(() => {})}>
+        <form onSubmit={form.onSubmit(handleSubmit)}>
           <Stack>
             {type === 'register' && (
               <TextInput
@@ -131,7 +204,13 @@ export function Auth(props: PaperProps) {
                 ? 'Already have an account? Login'
                 : "Don't have an account? Register"}
             </Anchor>
-            <Button type="submit" bg="green" radius="xl">
+            <Button
+              type="submit"
+              bg="green"
+              disabled={!form.values.terms}
+              radius="xl"
+              loading={loginMutation.isPending}
+            >
               {upperFirst(type)}
             </Button>
           </Group>
@@ -140,3 +219,5 @@ export function Auth(props: PaperProps) {
     </div>
   )
 }
+
+export default Auth

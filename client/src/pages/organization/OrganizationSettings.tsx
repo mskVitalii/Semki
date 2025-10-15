@@ -1,4 +1,12 @@
 import {
+  mockOrganization,
+  mockUser,
+  OrganizationRoles,
+  type Level,
+  type Organization,
+  type Team,
+} from '@/utils/types'
+import {
   Button,
   Card,
   Collapse,
@@ -15,14 +23,6 @@ import {
 import { useDisclosure, useListState } from '@mantine/hooks'
 import { useEffect, useState } from 'react'
 import { v4 as uuid } from 'uuid'
-import {
-  mockOrganization,
-  mockUser,
-  OrganizationRoles,
-  type Level,
-  type Organization,
-  type Team,
-} from '../types'
 
 export function OrganizationSettings() {
   const [organization, setOrganization] = useState<Organization | null>(null)

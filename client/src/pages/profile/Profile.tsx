@@ -17,7 +17,7 @@ import {
   OrganizationRoles,
   type Organization,
   type User,
-} from '../../utils/types'
+} from '@/utils/types'
 
 // TODO: selectors for semantic
 // TODO: API

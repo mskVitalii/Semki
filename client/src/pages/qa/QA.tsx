@@ -14,7 +14,7 @@ import {
 import { useListState } from '@mantine/hooks'
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
 import React, { useCallback, useRef, useState } from 'react'
-import type { SearchResult } from '../types'
+import type { SearchResult } from '@/utils/types'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 

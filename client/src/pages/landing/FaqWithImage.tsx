@@ -1,5 +1,5 @@
+import image from '@/media/image.svg'
 import { Accordion, Anchor, Container, Grid, Image, Title } from '@mantine/core'
-import image from '../media/image.svg'
 
 const FAQ = [
   {

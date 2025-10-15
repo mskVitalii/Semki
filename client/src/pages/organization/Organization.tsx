@@ -1,5 +1,5 @@
 import { Paper } from '@mantine/core'
-import { mockOrganization } from '../types'
+import { mockOrganization } from '@/utils/types'
 import OrganizationSettings from './OrganizationSettings'
 import Users from './OrganizationUsers'
 

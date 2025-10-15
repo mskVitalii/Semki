@@ -34,7 +34,7 @@ export function NotFound() {
                   Page you are trying to open does not exist. You may have
                   mistyped the address, or the page has been moved to another
                   URL. If you think this is an error contact support
-                  <Text ta="center">
+                  <Text component="span" display="block" ta="center">
                     <Anchor
                       href="mailto:msk.vitaly@gmail.com"
                       target="_blank"
@@ -78,3 +78,5 @@ function getRandomExcuse() {
   return excuses[index]
 }
 //#endregion
+
+export default NotFound

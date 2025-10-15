@@ -1,7 +1,7 @@
 // stores/authStore.ts
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Organization } from '../utils/types'
+import type { Organization } from '@/utils/types'
 
 interface AuthStore {
   accessToken: string | null

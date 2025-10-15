@@ -1,4 +1,12 @@
 import {
+  OrganizationRoles,
+  UserProviders,
+  UserStatuses,
+  type Organization,
+  type OrganizationRole,
+  type User,
+} from '@/utils/types'
+import {
   Button,
   Card,
   Group,
@@ -9,14 +17,6 @@ import {
 } from '@mantine/core'
 import { useState } from 'react'
 import { v4 as uuid } from 'uuid'
-import {
-  OrganizationRoles,
-  UserProviders,
-  UserStatuses,
-  type Organization,
-  type OrganizationRole,
-  type User,
-} from '../../utils/types'
 
 const defaultUser = (organization: Organization): User => ({
   _id: uuid(),

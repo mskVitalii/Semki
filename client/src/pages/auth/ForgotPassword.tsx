@@ -32,6 +32,7 @@ export function ForgotPassword() {
         <Paper withBorder shadow="md" p={30} radius="md" mt="xl">
           <TextInput
             label="Your email"
+            defaultValue={import.meta.env.VITE_TEST_EMAIL ?? ''}
             placeholder="example@gmail.com"
             required
           />
@@ -63,3 +64,5 @@ export function ForgotPassword() {
     </div>
   )
 }
+
+export default ForgotPassword

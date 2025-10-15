@@ -1,12 +1,4 @@
-import {
-  Button,
-  Group,
-  Kbd,
-  Loader,
-  Paper,
-  TextInput,
-  Tooltip,
-} from '@mantine/core'
+import { Button, Group, Loader, Paper, TextInput, Tooltip } from '@mantine/core'
 import { IconPlayerStop, IconSend } from '@tabler/icons-react'
 import { useState } from 'react'
 
@@ -37,7 +29,7 @@ function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
           label="Which people to find?"
           placeholder={getRandomPlaceholder()}
           rightSectionWidth={130}
-          rightSection={isLoading ? <Loader size="xs" /> : rightSection}
+          rightSection={<>{isLoading && <Loader size="xs" />}</>}
           mt="md"
           variant="unstyled"
           value={question}
@@ -95,13 +87,5 @@ function getRandomPlaceholder() {
   return placeholders[index]
 }
 //#endregion
-
-const rightSection = (
-  <div style={{ display: 'flex', alignItems: 'center' }} dir="ltr">
-    <Kbd>Ctrl/⌘</Kbd>
-    <span style={{ margin: '0 5px' }}>+</span>
-    <Kbd>K</Kbd>
-  </div>
-)
 
 export default SearchForm
