@@ -41,21 +41,19 @@ type Organization struct {
 }
 
 type OrganizationSemantic struct {
-	LevelsIDs    []primitive.ObjectID `bson:"levelsIds" json:"levelsIds"`
-	TeamsIDs     []primitive.ObjectID `bson:"teamsIds" json:"teamsIds"`
-	LocationsIDs []primitive.ObjectID `bson:"locationsIds" json:"locationsIds"`
+	Levels    []Level              `bson:"levels" json:"levels"`
+	Teams     []Level              `bson:"teams" json:"teams"`
+	Locations []primitive.ObjectID `bson:"locations" json:"locations"`
 }
 
 type Level struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	OrganizationID primitive.ObjectID `bson:"organizationId" json:"organizationId"`
-	Name           string             `bson:"name" json:"name"`
-	Description    string             `bson:"description" json:"description"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name        string             `bson:"name" json:"name"`
+	Description string             `bson:"description" json:"description"`
 }
 
 type Team struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	OrganizationID primitive.ObjectID `bson:"organizationId" json:"organizationId"`
-	Name           string             `bson:"name" json:"name"`
-	Description    string             `bson:"description" json:"description"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name        string             `bson:"name" json:"name"`
+	Description string             `bson:"description" json:"description"`
 }
