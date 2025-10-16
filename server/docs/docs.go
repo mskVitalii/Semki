@@ -683,13 +683,13 @@ const docTemplate = `{
         "jwtUtils.UserClaims": {
             "type": "object",
             "properties": {
+                "_id": {
+                    "type": "string"
+                },
                 "organizationId": {
                     "type": "string"
                 },
                 "organizationRole": {
-                    "type": "string"
-                },
-                "sub": {
                     "type": "string"
                 }
             }

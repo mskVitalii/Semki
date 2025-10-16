@@ -27,7 +27,12 @@ export default function Profile() {
   const organization = useOrganizationStore((s) => s.organization)
   const [form, setForm] = useState<User | null>(user)
 
-  if (!form || !organization) return <Loader />
+  if (!form || !organization)
+    return (
+      <MainLayout>
+        <Loader color="green" />
+      </MainLayout>
+    )
 
   const isOwnProfile = userId === user?._id
 
@@ -62,7 +67,8 @@ export default function Profile() {
   const handleSave = async () => {
     setEditing(false)
     // TODO: change to tanstack
-    await fetch(`${import.meta.env.BASE_URL}/api/users/${userId}`, {
+    if (!userId) return
+    await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

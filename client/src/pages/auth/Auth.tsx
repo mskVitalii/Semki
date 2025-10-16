@@ -29,10 +29,10 @@ export function Auth(props: PaperProps) {
   const { accessToken, setAuth } = useAuthStore()
   const [type, toggle] = useToggle(['login', 'register'])
   const { organizationDomain } = useOrganizationStore()
-
+  console.log('/login page')
   useEffect(() => {
     const accessTokenFromUrl = searchParams.get('accessToken')
-    const refreshTokenFromUrl = searchParams.get('refresh')
+    const refreshTokenFromUrl = searchParams.get('refreshToken')
     const errorFromUrl = searchParams.get('error')
 
     if (errorFromUrl) {

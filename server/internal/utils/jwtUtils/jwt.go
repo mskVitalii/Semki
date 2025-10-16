@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	IdentityKey         = "identity"
+	IdentityKey         = "_id"
 	AuthorizationHeader = "Authorization"
 	AccessTokenTimeout  = time.Minute * 15
 	RefreshTokenTimeout = time.Hour * 24 * 7
@@ -90,7 +90,7 @@ func NoRoute(c *gin.Context) {
 // region Payload
 
 type UserClaims struct {
-	Id               primitive.ObjectID     `json:"sub"`
+	Id               primitive.ObjectID     `json:"_id"`
 	OrganizationId   primitive.ObjectID     `json:"organizationId"`
 	OrganizationRole model.OrganizationRole `json:"organizationRole"`
 }

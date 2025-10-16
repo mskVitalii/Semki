@@ -33,19 +33,17 @@ interface SidebarProps {
 
 export function Sidebar({ onNewChat }: SidebarProps) {
   const navigate = useNavigate()
-  const logout = useAuthStore((state) => state.logout)
+  const logout = useAuthStore((s) => s.logout)
+  const claims = useAuthStore((s) => s.claims)
   const { organizationDomain } = useOrganizationStore()
-
+  const refreshToken = useAuthStore((s) => s.refreshToken)
   const user = useUserStore((s) => s.user)
-
   const logoutMutation = useMutation({
     mutationFn: async () => {
-      await api.post('/api/v1/logout')
+      await api.post('/api/v1/logout', { refresh_token: refreshToken })
     },
     onSuccess: () => {
       logout()
-      // localStorage.removeItem('accessToken')
-      // localStorage.removeItem('refreshToken')
       navigate('/login', { replace: true })
     },
   })
@@ -79,7 +77,7 @@ export function Sidebar({ onNewChat }: SidebarProps) {
   return (
     <Box className="relative h-screen w-80 flex flex-col border-r-2! border-[var(--mantine-color-dark-6)]!">
       <div className="flex flex-col h-full p-6! flex-1 space-y-6!">
-        <Link to={`/profile/${user?._id}`} className="no-underline mb-4">
+        <Link to={`/profile/${claims?._id}`} className="no-underline mb-4">
           <UnstyledButton className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
             <Avatar size="md" radius="xl">
               <IconUser size={20} />

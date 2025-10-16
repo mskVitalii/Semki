@@ -15,9 +15,9 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Auth />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route element={<BootstrapRoute />}>
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/login" element={<Auth />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/profile/:userId" element={<Profile />} />
           <Route path="/organization" element={<Organization />} />

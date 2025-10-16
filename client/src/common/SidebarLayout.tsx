@@ -8,7 +8,6 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  // const userId = useAuthStore((state) => state.user?.id)
   const [opened, setOpened] = useState(false)
   const navigate = useNavigate()
 
@@ -16,10 +15,6 @@ export function MainLayout({ children }: MainLayoutProps) {
     console.log('new!')
     navigate('/qa', { replace: true })
   }
-
-  // if (!userId) {
-  //   return null
-  // }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -41,7 +36,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           <Sidebar onNewChat={handleNewChat} />
         </Drawer>
 
-        <main className="flex-1 flex items-center justify-center">
+        <main className="flex-1 flex items-center justify-center h-full">
           {children}
         </main>
       </Box>
