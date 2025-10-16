@@ -10,12 +10,35 @@ type DeleteUserResponse struct {
 	Message string `json:"message"`
 }
 
+type RestoreUserResponse struct {
+	Message string `json:"message"`
+}
+
+type InviteUserResponse struct {
+	Message string `json:"message"`
+	UserId  string `json:"user_id"`
+}
+
 type UpdateUserResponse struct {
 	Message string `json:"message"`
 }
 
 type CreateUserResponse struct {
-	Message string `json:"message"`
+	Message string     `json:"message"`
+	User    model.User `json:"user"`
+}
+
+type RegisterUserResponse struct {
+	Message      string             `json:"message"`
+	User         model.User         `json:"user"`
+	Organization model.Organization `json:"organization"`
+	Tokens       struct {
+		AccessToken  string `json:"access_token"`
+		TokenType    string `json:"token_type"`
+		RefreshToken string `json:"refresh_token,omitempty"`
+		ExpiresAt    int64  `json:"expires_at"`
+		CreatedAt    int64  `json:"created_at"`
+	} `json:"tokens"`
 }
 
 type GetUserResponse model.User
@@ -25,14 +48,99 @@ type CreateUserRequest struct {
 	Password string `json:"password" example:"defaultPassword"`
 }
 
+type RegisterUserRequest struct {
+	Name string `json:"name" example:"Vitalii"`
+	CreateUserRequest
+}
+
 type CreateUserByGoogleProvider struct {
 	Email string `json:"email"`
 }
 
+// InviteUserRequest represents the request body for inviting a user
+type InviteUserRequest struct {
+	Email            string                 `json:"email" binding:"required,email"`
+	Name             string                 `json:"name" binding:"required"`
+	OrganizationRole model.OrganizationRole `json:"organizationRole" binding:"required"`
+	Semantic         *UserSemanticRequest   `json:"semantic,omitempty"`
+	Contact          *UserContactRequest    `json:"contact,omitempty"`
+}
+
+type UserSemanticRequest struct {
+	Description string `json:"description"`
+	Team        string `json:"team"`  // ObjectID as string
+	Level       string `json:"level"` // ObjectID as string
+	Location    string `json:"location"`
+}
+
+type UserContactRequest struct {
+	Slack     string `json:"slack"`
+	Telephone string `json:"telephone"`
+	Email     string `json:"email"`
+	Telegram  string `json:"telegram"`
+	WhatsApp  string `json:"whatsapp"`
+}
+
+// UserToInvite converts InviteUserRequest DTO to User model
+func (req *InviteUserRequest) UserToInvite(organizationId primitive.ObjectID) (*model.User, error) {
+	user := &model.User{
+		Id:               primitive.NewObjectID(),
+		Email:            req.Email,
+		Password:         "", // No password for invited users
+		Name:             req.Name,
+		Providers:        []model.UserProvider{},
+		Verified:         false,
+		Status:           model.UserStatuses.INVITED,
+		OrganizationId:   organizationId,
+		OrganizationRole: req.OrganizationRole,
+	}
+
+	// Handle optional semantic data
+	if req.Semantic != nil {
+		semantic := model.UserSemantic{
+			Description: req.Semantic.Description,
+			Location:    req.Semantic.Location,
+		}
+
+		// Convert team ObjectID if provided
+		if req.Semantic.Team != "" {
+			teamID, err := primitive.ObjectIDFromHex(req.Semantic.Team)
+			if err != nil {
+				return nil, err
+			}
+			semantic.Team = teamID
+		}
+
+		// Convert level ObjectID if provided
+		if req.Semantic.Level != "" {
+			levelID, err := primitive.ObjectIDFromHex(req.Semantic.Level)
+			if err != nil {
+				return nil, err
+			}
+			semantic.Level = levelID
+		}
+
+		user.Semantic = semantic
+	}
+
+	// Handle optional contact data
+	if req.Contact != nil {
+		user.Contact = model.UserContact{
+			Slack:     req.Contact.Slack,
+			Telephone: req.Contact.Telephone,
+			Email:     req.Contact.Email,
+			Telegram:  req.Contact.Telegram,
+			WhatsApp:  req.Contact.WhatsApp,
+		}
+	}
+
+	return user, nil
+}
+
 // TODO: check
 
-func NewUserFromRequest(req CreateUserRequest) model.User {
-	return model.User{
+func NewUserFromRequest(req CreateUserRequest) *model.User {
+	return &model.User{
 		Id:        primitive.NewObjectID(),
 		Email:     req.Email,
 		Password:  lib.HashPassword(req.Password),

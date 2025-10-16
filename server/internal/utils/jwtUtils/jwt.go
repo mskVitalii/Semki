@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	IdentityKey         = "identity"
+	IdentityKey         = "_id"
 	AuthorizationHeader = "Authorization"
 	AccessTokenTimeout  = time.Minute * 15
 	RefreshTokenTimeout = time.Hour * 24 * 7
@@ -29,18 +29,19 @@ const (
 
 func Startup(cfg *config.Config, service routes.IAuthService) *jwt.GinJWTMiddleware {
 	middleware := &jwt.GinJWTMiddleware{
-		Realm:         cfg.Service,
-		Key:           []byte(cfg.SecretKeyJWT),
-		Timeout:       AccessTokenTimeout,
-		MaxRefresh:    RefreshTokenTimeout,
-		IdentityKey:   IdentityKey,
-		Authenticator: authenticator(service),
-		Authorizer:    authorization,
-		Unauthorized:  unauthorized,
-		PayloadFunc:   payloadFunc,
-		TokenLookup:   fmt.Sprintf("header:%s", AuthorizationHeader),
-		TokenHeadName: "Bearer",
-		TimeFunc:      time.Now,
+		Realm:           cfg.Service,
+		Key:             []byte(cfg.SecretKeyJWT),
+		Timeout:         AccessTokenTimeout,
+		MaxRefresh:      RefreshTokenTimeout,
+		IdentityKey:     IdentityKey,
+		IdentityHandler: identity,
+		Authenticator:   authenticator(service),
+		Authorizer:      authorization,
+		Unauthorized:    unauthorized,
+		PayloadFunc:     payloadFunc,
+		TokenLookup:     fmt.Sprintf("header:%s", AuthorizationHeader),
+		TokenHeadName:   "Bearer",
+		TimeFunc:        time.Now,
 	}
 
 	middleware.EnableRedisStore(
@@ -82,15 +83,15 @@ func authenticator(service routes.IAuthService) func(*gin.Context) (interface{},
 }
 
 func NoRoute(c *gin.Context) {
-	claims := jwt.ExtractClaims(c)
-	telemetry.Log.Info(fmt.Sprintf("NoRoute claims: %v", claims), telemetry.TraceForZapLog(c.Request.Context()))
+	//claims := jwt.ExtractClaims(c)
+	//telemetry.Log.Info(fmt.Sprintf("NoRoute claims: %v", claims), telemetry.TraceForZapLog(c.Request.Context()))
 	c.JSON(http.StatusNotFound, gin.H{"message": "Not found"})
 }
 
 // region Payload
 
 type UserClaims struct {
-	Id               primitive.ObjectID     `json:"sub"`
+	Id               primitive.ObjectID     `json:"_id"`
 	OrganizationId   primitive.ObjectID     `json:"organizationId"`
 	OrganizationRole model.OrganizationRole `json:"organizationRole"`
 }
@@ -117,6 +118,42 @@ func payloadFunc(data interface{}) gojwt.MapClaims {
 		}
 	}
 	return gojwt.MapClaims{}
+}
+
+// endregion
+
+// region Identity
+
+func identity(c *gin.Context) interface{} {
+	claims := jwt.ExtractClaims(c)
+
+	idStr, ok := claims[IdentityKey].(string)
+	if !ok {
+		return nil
+	}
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		return nil
+	}
+
+	orgIdStr, ok := claims["organizationId"].(string)
+	if !ok {
+		return nil
+	}
+
+	orgId, err := primitive.ObjectIDFromHex(orgIdStr)
+	if err != nil {
+		return nil
+	}
+
+	orgRole, _ := claims["organizationRole"].(string)
+
+	return &UserClaims{
+		Id:               id,
+		OrganizationId:   orgId,
+		OrganizationRole: model.OrganizationRole(orgRole),
+	}
 }
 
 // endregion

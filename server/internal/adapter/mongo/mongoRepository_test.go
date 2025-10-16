@@ -109,7 +109,7 @@ func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IMongoRepository, model
 	}
 
 	ctx := context.TODO()
-	err = repo.CreateUser(ctx, user)
+	err = repo.CreateUser(ctx, &user)
 	assert.NoError(t, err)
 
 	_, err = repo.GetUserByID(ctx, user.Id)

@@ -62,6 +62,15 @@ type RedisConfig struct {
 	Password string
 }
 
+type SMTPConfig struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	From     string
+	FromName string
+}
+
 // Config - app.yml + .env for secrets & dev/prod values
 type Config struct {
 	*AppConfig
@@ -75,6 +84,7 @@ type Config struct {
 	Qdrant           QdrantConfig
 	Embedder         EmbedderConfig
 	Redis            RedisConfig
+	SMTP             SMTPConfig
 	PyroscopeAddress string
 	FrontendUrl      string
 	JsonLog          bool
@@ -157,6 +167,16 @@ func GetConfig(rootPath string) *Config {
 
 		instance.FrontendUrl = getEnvKey("FRONTEND_URL")
 		instance.JsonLog = getEnvKey("JSON_LOG") == "true"
+
+		instance.Embedder.Host = getEnvKey("EMBEDDER_HOST")
+		instance.Embedder.Port = getEnvKeyInt("EMBEDDER_PORT")
+
+		instance.SMTP.Host = getEnvKey("SMTP_HOST")
+		instance.SMTP.Port = getEnvKeyInt("SMTP_PORT")
+		instance.SMTP.Username = getEnvKey("SMTP_USERNAME")
+		instance.SMTP.Password = getEnvKey("SMTP_PASSWORD")
+		instance.SMTP.From = getEnvKey("SMTP_FROM")
+		instance.SMTP.FromName = getEnvKey("SMTP_FROM_NAME")
 
 		// endregion
 	})

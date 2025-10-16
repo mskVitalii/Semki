@@ -32,6 +32,7 @@ require (
 	golang.org/x/crypto v0.43.0
 	golang.org/x/oauth2 v0.32.0
 	google.golang.org/grpc v1.75.1
+	gopkg.in/gomail.v2 v2.0.0-20160411212932-81ebce5c23df
 )
 
 require (
@@ -100,6 +101,7 @@ require (
 	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/genproto v0.0.0-20220324131243-acbaeb5b85eb // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
+	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )

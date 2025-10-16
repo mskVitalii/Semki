@@ -18,6 +18,20 @@ var OrganizationRoles = struct {
 
 //endregion
 
+//region UserStatus
+
+type OrganizationStatus string
+
+var OrganizationStatuses = struct {
+	ACTIVE  OrganizationStatus
+	DELETED OrganizationStatus
+}{
+	ACTIVE:  "ACTIVE",
+	DELETED: "DELETED",
+}
+
+//endregion
+
 //region OrganizationPlan
 
 type OrganizationPlanType string
@@ -25,7 +39,6 @@ type OrganizationPlanType string
 var OrganizationPlans = struct {
 	FREE     OrganizationPlanType
 	BUSINESS OrganizationPlanType
-	INVITED  OrganizationPlanType
 }{
 	FREE:     "FREE",
 	BUSINESS: "BUSINESS",
@@ -34,26 +47,27 @@ var OrganizationPlans = struct {
 //endregion
 
 type Organization struct {
-	ID       primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
+	Id       primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
 	Title    string               `bson:"title" json:"title"`
 	Semantic OrganizationSemantic `bson:"semantic" json:"semantic"`
 	Plan     OrganizationPlanType `bson:"plan" json:"plan"`
+	Status   OrganizationStatus   `bson:"status" json:"status"`
 }
 
 type OrganizationSemantic struct {
 	Levels    []Level              `bson:"levels" json:"levels"`
-	Teams     []Level              `bson:"teams" json:"teams"`
+	Teams     []Team               `bson:"teams" json:"teams"`
 	Locations []primitive.ObjectID `bson:"locations" json:"locations"`
 }
 
 type Level struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Id          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name"`
 	Description string             `bson:"description" json:"description"`
 }
 
 type Team struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Id          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name"`
 	Description string             `bson:"description" json:"description"`
 }

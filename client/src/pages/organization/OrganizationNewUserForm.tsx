@@ -1,6 +1,5 @@
 import {
   OrganizationRoles,
-  UserProviders,
   UserStatuses,
   type Organization,
   type OrganizationRole,
@@ -26,7 +25,7 @@ const defaultUser = (organization: Organization | null): User => {
     email: '',
     password: '',
     name: '',
-    providers: [UserProviders.Email],
+    providers: [],
     verified: false,
     status: UserStatuses.ACTIVE,
     semantic: { description: '', team: '', level: '', location: '' },

@@ -1,5 +1,16 @@
 basePath: /
 definitions:
+  dto.CreateOrganizationRequest:
+    properties:
+      title:
+        example: Staffbase
+        type: string
+    type: object
+  dto.CreateOrganizationResponse:
+    properties:
+      message:
+        type: string
+    type: object
   dto.CreateUserRequest:
     properties:
       email:
@@ -13,10 +24,30 @@ definitions:
     properties:
       message:
         type: string
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
+  dto.DeleteOrganizationResponse:
+    properties:
+      message:
+        type: string
     type: object
   dto.DeleteUserResponse:
     properties:
       message:
+        type: string
+    type: object
+  dto.GetOrganizationResponse:
+    properties:
+      id:
+        type: string
+      plan:
+        type: string
+      semantic:
+        $ref: '#/definitions/model.OrganizationSemantic'
+      status:
+        type: string
+      title:
         type: string
     type: object
   dto.GetUserResponse:
@@ -48,6 +79,13 @@ definitions:
       verified:
         type: boolean
     type: object
+  dto.InviteUserResponse:
+    properties:
+      message:
+        type: string
+      user_id:
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -78,6 +116,45 @@ definitions:
     required:
     - refresh_token
     type: object
+  dto.RegisterUserRequest:
+    properties:
+      email:
+        example: msk.vitaly@gmail.com
+        type: string
+      name:
+        example: Vitalii
+        type: string
+      password:
+        example: defaultPassword
+        type: string
+    type: object
+  dto.RegisterUserResponse:
+    properties:
+      message:
+        type: string
+      organization:
+        $ref: '#/definitions/model.Organization'
+      tokens:
+        properties:
+          access_token:
+            type: string
+          created_at:
+            type: integer
+          expires_at:
+            type: integer
+          refresh_token:
+            type: string
+          token_type:
+            type: string
+        type: object
+      user:
+        $ref: '#/definitions/model.User'
+    type: object
+  dto.RestoreUserResponse:
+    properties:
+      message:
+        type: string
+    type: object
   dto.SearchResultWithUserAndDescription:
     properties:
       description:
@@ -97,6 +174,11 @@ definitions:
       message:
         type: string
     type: object
+  dto.UpdateOrganizationResponse:
+    properties:
+      message:
+        type: string
+    type: object
   dto.UpdateUserResponse:
     properties:
       message:
@@ -104,16 +186,62 @@ definitions:
     type: object
   jwtUtils.UserClaims:
     properties:
+      _id:
+        type: string
       organizationId:
         type: string
       organizationRole:
-        type: string
-      sub:
         type: string
     type: object
   lib.ErrorResponse:
     properties:
       message:
+        type: string
+    type: object
+  model.Level:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.Organization:
+    properties:
+      id:
+        type: string
+      plan:
+        type: string
+      semantic:
+        $ref: '#/definitions/model.OrganizationSemantic'
+      status:
+        type: string
+      title:
+        type: string
+    type: object
+  model.OrganizationSemantic:
+    properties:
+      levels:
+        items:
+          $ref: '#/definitions/model.Level'
+        type: array
+      locations:
+        items:
+          type: string
+        type: array
+      teams:
+        items:
+          $ref: '#/definitions/model.Team'
+        type: array
+    type: object
+  model.Team:
+    properties:
+      description:
+        type: string
+      id:
+        type: string
+      name:
         type: string
     type: object
   model.User:
@@ -163,6 +291,8 @@ definitions:
       description:
         type: string
       level:
+        type: string
+      location:
         type: string
       team:
         type: string
@@ -274,6 +404,122 @@ paths:
       summary: Logs out a user and invalidates the JWT token
       tags:
       - auth
+  /api/v1/organization:
+    delete:
+      description: Deletes an organization from the MongoDB database by its ID.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.DeleteOrganizationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Deletes an organization by its ID
+      tags:
+      - organizations
+    get:
+      description: Retrieves an organization from the MongoDB database by its ID.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.GetOrganizationResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "404":
+          description: Organization not found
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retrieves an organization by its ID
+      tags:
+      - organizations
+    post:
+      consumes:
+      - application/json
+      description: Creates a new organization in the MongoDB database.
+      parameters:
+      - description: Organization object to create
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.CreateOrganizationResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Creates a new organization
+      tags:
+      - organizations
+  /api/v1/organization/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Updates an organization in the MongoDB database by its ID.
+      parameters:
+      - description: Organization object with updated data
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/model.Organization'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.UpdateOrganizationResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Updates an organization by its ID
+      tags:
+      - organizations
   /api/v1/refresh_token:
     post:
       consumes:
@@ -493,6 +739,89 @@ paths:
       summary: Updates a user by its ID
       tags:
       - users
+  /api/v1/user/{id}/restore:
+    post:
+      description: Restores a user from the MongoDB database by its ID.
+      parameters:
+      - description: ID of the user to restore
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.RestoreUserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Restores a user by its ID
+      tags:
+      - users
+  /api/v1/user/invite:
+    post:
+      description: Invites a user from the MongoDB database by its ID.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.InviteUserResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Invites a user by its ID
+      tags:
+      - users
+  /api/v1/user/register:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user in the MongoDB database + create organization
+        + tokens + sends verification email
+      parameters:
+      - description: User object to create
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RegisterUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.RegisterUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      summary: Register a new user
+      tags:
+      - auth
   /metrics:
     get:
       description: Logs that are collected by prometheus and visualized in grafana

@@ -1,4 +1,6 @@
-import { Navigate, Outlet } from 'react-router-dom'
+import { Loader } from '@mantine/core'
+import { Outlet } from 'react-router-dom'
+import { MainLayout } from './SidebarLayout'
 import { useFetchOrganization } from './useFetchOrganization'
 import { useFetchUser } from './useFetchUser'
 
@@ -7,14 +9,22 @@ export const BootstrapRoute = ({
 }: {
   children?: React.ReactNode
 }) => {
+  console.group('BootstrapRoute')
   const orgQuery = useFetchOrganization()
   const userQuery = useFetchUser()
-
+  console.groupEnd()
   if (orgQuery.isLoading || userQuery.isLoading)
-    return <div>Loading org...</div>
+    return (
+      <MainLayout>
+        <Loader color="green" />
+      </MainLayout>
+    )
 
   if (orgQuery.isError || userQuery.isError)
-    return <Navigate to="/404" replace />
+    console.error('error', userQuery.error)
+
+  // if (orgQuery.isError || userQuery.isError)
+  //   return <Navigate to="/login" replace />
 
   return children ? <>{children}</> : <Outlet />
 }

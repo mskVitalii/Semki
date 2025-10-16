@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import { mockOrganization, type Organization } from './types'
 
 export const useFetchOrganization = () => {
+  console.log('useFetchOrganization')
   const setOrganization = useOrganizationStore((s) => s.setOrganization)
   const setOrganizationDomain = useOrganizationStore(
     (s) => s.setOrganizationDomain,
@@ -19,6 +20,9 @@ export const useFetchOrganization = () => {
       // return data
       return mockOrganization
     },
+    retry: true,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
+    refetchOnWindowFocus: false,
   })
 
   useEffect(() => {

@@ -88,12 +88,20 @@ func startup(cfg *config.Config) {
 	qdrantRepo := qdrant.New(cfg, vectorDb)
 	mongoRepo := mongo.New(cfg, db)
 	statusService := service.NewStatusService()
-	userService := service.NewUserService(mongoRepo)
-	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
-	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
-
+	emailService := service.NewEmailService(
+		cfg.SMTP.Host,
+		cfg.SMTP.Port,
+		cfg.SMTP.Username,
+		cfg.SMTP.Password,
+		cfg.SMTP.From,
+		cfg.SMTP.FromName,
+	)
+	organizationService := service.NewOrganizationService(mongoRepo)
 	authService := service.NewAuthService(mongoRepo)
 	authMiddleware := jwtUtils.Startup(cfg, authService)
+	userService := service.NewUserService(mongoRepo, *emailService, authMiddleware, cfg.FrontendUrl)
+	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
+	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
 	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
 
@@ -161,6 +169,7 @@ func startup(cfg *config.Config) {
 	{
 		routes.RegisterStatusRoutes(apiV1, statusService)
 		routes.RegisterUserRoutes(apiV1, userService, withAuth)
+		routes.RegisterOrganizationRoutes(apiV1, organizationService, withAuth)
 		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, authMiddleware, withAuth, logoutHandler)
 		routes.RegisterSearchRoutes(apiV1, searchService, withAuth, redis)
 	}

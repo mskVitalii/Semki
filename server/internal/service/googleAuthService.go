@@ -93,7 +93,7 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 
 	if userFromDb == nil {
 		userFromDb = dto.NewUserFromGoogleProvider(user)
-		if err := s.mongoRepo.CreateUser(ctx, *userFromDb); err != nil {
+		if err := s.mongoRepo.CreateUser(ctx, userFromDb); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
@@ -111,7 +111,6 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// Token
-	// TODO: share this way to user creation
 	claims, err := jwtUtils.UserToPayload(userFromDb)
 	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
 	if err != nil {

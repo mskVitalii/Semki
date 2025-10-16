@@ -21,7 +21,7 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
-      loki:
+      mailhog:
         condition: service_started
 
   embedder:
@@ -192,6 +192,18 @@ services:
       - ./resources/loki-config.yaml:/etc/loki/local-config.yaml
     networks:
       - semki_network
+
+  # [MAIL] Mailhog
+  mailhog:
+    image: mailhog/mailhog
+    container_name: semki-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    restart: unless-stopped
+    networks:
+      - semki_network
+
 
 # ----------------------------------- OTHER
 networks:

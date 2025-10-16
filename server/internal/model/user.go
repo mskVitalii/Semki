@@ -32,9 +32,11 @@ type UserStatus string
 var UserStatuses = struct {
 	ACTIVE  UserStatus
 	DELETED UserStatus
+	INVITED UserStatus
 }{
 	ACTIVE:  "ACTIVE",
 	DELETED: "DELETED",
+	INVITED: "INVITED",
 }
 
 //endregion
@@ -43,6 +45,7 @@ type UserSemantic = struct {
 	Description string             `json:"description" bson:"description"`
 	Team        primitive.ObjectID `json:"team" bson:"team"`
 	Level       primitive.ObjectID `json:"level" bson:"level"`
+	Location    string             `json:"location" bson:"location"`
 }
 
 type UserContact struct {
