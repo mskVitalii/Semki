@@ -5,7 +5,8 @@ import {
   type Organization,
   type OrganizationRole,
   type User,
-} from '@/utils/types'
+} from '@/common/types'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Button,
   Card,
@@ -18,35 +19,36 @@ import {
 import { useState } from 'react'
 import { v4 as uuid } from 'uuid'
 
-const defaultUser = (organization: Organization): User => ({
-  _id: uuid(),
-  email: '',
-  password: '',
-  name: '',
-  providers: [UserProviders.Email],
-  verified: false,
-  status: UserStatuses.ACTIVE,
-  semantic: { description: '', team: '', level: '', location: '' },
-  contact: {
-    slack: '',
-    telephone: '',
+const defaultUser = (organization: Organization | null): User => {
+  if (!organization) throw new Error('No organization')
+  return {
+    _id: uuid(),
     email: '',
-    telegram: '',
-    whatsapp: '',
-  },
-  avatarId: '',
-  organizationId: organization.id,
-  organizationRole: OrganizationRoles.USER,
-})
+    password: '',
+    name: '',
+    providers: [UserProviders.Email],
+    verified: false,
+    status: UserStatuses.ACTIVE,
+    semantic: { description: '', team: '', level: '', location: '' },
+    contact: {
+      slack: '',
+      telephone: '',
+      email: '',
+      telegram: '',
+      whatsapp: '',
+    },
+    avatarId: '',
+    organizationId: organization.id,
+    organizationRole: OrganizationRoles.USER,
+  }
+}
 
 type OrganizationNewUserFormProps = {
-  organization: Organization
   onSave: (newUser: User) => void
 }
-function OrganizationNewUserForm({
-  organization,
-  onSave,
-}: OrganizationNewUserFormProps) {
+function OrganizationNewUserForm({ onSave }: OrganizationNewUserFormProps) {
+  const organization = useOrganizationStore((s) => s.organization)
+
   const [newUser, setNewUser] = useState<User>(defaultUser(organization))
 
   const handleSemanticChange = <K extends keyof User['semantic']>(
@@ -88,7 +90,7 @@ function OrganizationNewUserForm({
         <Group grow>
           <Select
             label="Team"
-            data={organization.semantic.teams.map((t) => ({
+            data={organization?.semantic.teams.map((t) => ({
               value: t.name,
               label: t.name,
             }))}
@@ -97,7 +99,7 @@ function OrganizationNewUserForm({
           />
           <Select
             label="Level"
-            data={organization.semantic.levels.map((l) => ({
+            data={organization?.semantic.levels.map((l) => ({
               value: l.name,
               label: l.name,
             }))}

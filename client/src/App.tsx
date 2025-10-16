@@ -1,7 +1,7 @@
 import { lazy } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import { OrganizationRoute } from './utils/OrganizationRoute'
-import { ProtectedRoute } from './utils/ProtectedRoute'
+import { BootstrapRoute } from './common/BootstrapRoute'
+import { ProtectedRoute } from './common/ProtectedRoute'
 
 const NotFound = lazy(() => import('./pages/404/NotFound'))
 const Landing = lazy(() => import('./pages/landing/Landing'))
@@ -15,13 +15,14 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
-      <Route element={<OrganizationRoute />}>
+      <Route element={<BootstrapRoute />}>
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/login" element={<Auth />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/profile/:userId" element={<Profile />} />
           <Route path="/organization" element={<Organization />} />
           <Route path="/qa" element={<QA />} />
+          <Route path="/qa/:chatId" element={<QA />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

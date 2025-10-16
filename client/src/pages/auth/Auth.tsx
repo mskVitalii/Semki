@@ -53,7 +53,7 @@ export function Auth(props: PaperProps) {
     }
 
     if (accessToken) {
-      navigate('/qa')
+      navigate('/qa', { replace: true })
     }
   }, [accessToken, navigate, searchParams, setAuth])
 
@@ -78,7 +78,7 @@ export function Auth(props: PaperProps) {
     mutationFn: login,
     onSuccess: (data) => {
       setAuth(data.access_token, data.refresh_token)
-      navigate('/qa')
+      navigate('/qa', { replace: true })
     },
     onError: (error: AxiosError<AuthErrorResponse>) => {
       console.error(error)
@@ -103,7 +103,7 @@ export function Auth(props: PaperProps) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen max-w-screen w-screen bg-gray-900">
+    <div className="flex items-center justify-center min-h-screen max-w-screen w-full bg-gray-900">
       <Paper radius="md" p="lg" withBorder {...props}>
         <Text size="lg" fw={500} className="first-letter:uppercase">
           {organizationDomain}'s Semki, {type} with

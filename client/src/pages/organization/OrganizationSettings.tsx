@@ -1,11 +1,11 @@
 import {
-  mockOrganization,
   mockUser,
   OrganizationRoles,
   type Level,
   type Organization,
   type Team,
-} from '@/utils/types'
+} from '@/common/types'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Button,
   Card,
@@ -21,15 +21,27 @@ import {
   Title,
 } from '@mantine/core'
 import { useDisclosure, useListState } from '@mantine/hooks'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { v4 as uuid } from 'uuid'
 
 export function OrganizationSettings() {
-  const [organization, setOrganization] = useState<Organization | null>(null)
-  const [title, setTitle] = useState('')
-  const [levels, levelsHandlers] = useListState<Level>([])
-  const [locations, locationsHandlers] = useListState<string>([])
-  const [teams, teamsHandlers] = useListState<Team>([])
+  const remoteOrg = useOrganizationStore((s) => s.organization)
+  const setRemoteOrg = useOrganizationStore((s) => s.setOrganization)
+
+  const [organization, setOrganization] = useState<Organization | null>(
+    remoteOrg,
+  )
+  // TODO: change on Form
+  const [title, setTitle] = useState(remoteOrg?.title ?? '')
+  const [levels, levelsHandlers] = useListState<Level>(
+    remoteOrg?.semantic.levels ?? [],
+  )
+  const [locations, locationsHandlers] = useListState<string>(
+    remoteOrg?.semantic.locations ?? [],
+  )
+  const [teams, teamsHandlers] = useListState<Team>(
+    remoteOrg?.semantic.teams ?? [],
+  )
 
   const [levelsOpened, { toggle: toggleLevels }] = useDisclosure(false)
   const [locationsOpened, { toggle: toggleLocations }] = useDisclosure(false)
@@ -56,21 +68,10 @@ export function OrganizationSettings() {
     mockUser.organizationRole === OrganizationRoles.OWNER ||
     mockUser.organizationRole === OrganizationRoles.ADMIN
 
-  useEffect(() => {
-    console.log('useEffect')
-    // TODO: API
-    setOrganization(mockOrganization)
-    setTitle(mockOrganization.title)
-    levelsHandlers.setState(mockOrganization.semantic.levels)
-    locationsHandlers.setState(mockOrganization.semantic.locations)
-    teamsHandlers.setState(mockOrganization.semantic.teams)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const handleSave = () => {
     // TODO: API
     if (!organization) return
-    setOrganization({
+    const newOrg: Organization = {
       ...organization,
       title,
       semantic: {
@@ -79,7 +80,9 @@ export function OrganizationSettings() {
         locations,
         teams,
       },
-    })
+    }
+    setOrganization(newOrg)
+    setRemoteOrg(newOrg)
     // TODO: save notification
   }
 

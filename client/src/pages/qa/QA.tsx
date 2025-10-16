@@ -1,3 +1,5 @@
+import { MainLayout } from '@/common/SidebarLayout'
+import type { SearchResult } from '@/common/types'
 import {
   ActionIcon,
   Alert,
@@ -14,7 +16,6 @@ import {
 import { useListState } from '@mantine/hooks'
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
 import React, { useCallback, useRef, useState } from 'react'
-import type { SearchResult } from '@/utils/types'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 
@@ -134,95 +135,101 @@ const QA: React.FC = () => {
   }
 
   return (
-    <Card
-      shadow="lg"
-      padding="xl"
-      radius="md"
-      className="min-h-screen w-screen bg-gray-50 p-4"
-    >
-      <Stack>
-        {/* Header */}
-        <Group justify="space-between" align="center">
-          <Anchor
-            variant="gradient"
-            gradient={{ from: 'green', to: 'white' }}
-            fw={500}
-            fz="lg"
-            href="#text-props"
-          >
-            <Title order={2}>🌻 Semki</Title>
-          </Anchor>
-        </Group>
+    <MainLayout>
+      <Card
+        shadow="lg"
+        padding="xl"
+        radius="md"
+        className="min-h-screen w-full p-4"
+      >
+        <Stack>
+          {/* Header */}
+          <Group justify="space-between" align="center">
+            <Anchor
+              variant="gradient"
+              gradient={{ from: 'green', to: 'white' }}
+              fw={500}
+              fz="lg"
+              href="#text-props"
+            >
+              <Title order={2}>🌻 Semki</Title>
+            </Anchor>
+          </Group>
 
-        {/* Input Section */}
-        <SearchForm
-          onSearch={handleSubmit}
-          onCancel={handleCancel}
-          isLoading={isLoading}
-        />
+          {/* Input Section */}
+          <SearchForm
+            onSearch={handleSubmit}
+            onCancel={handleCancel}
+            isLoading={isLoading}
+          />
 
-        {/* Error Display */}
-        {error && (
-          <Alert
-            icon={<IconAlertCircle size={16} />}
-            title="Error"
-            color="red"
-            variant="light"
-            withCloseButton
-            onClose={() => setError('')}
-          >
-            {error}
-          </Alert>
-        )}
+          {/* Error Display */}
+          {error && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Error"
+              color="red"
+              variant="light"
+              withCloseButton
+              onClose={() => setError('')}
+            >
+              {error}
+            </Alert>
+          )}
 
-        {/* Response Display */}
-        {users.length > 0 && (
-          <>
-            <Group justify="space-between" mb="sm">
-              <Group>
-                <Text fw={600} size="lg" className="text-gray-700">
-                  Response
-                </Text>
-                {isLoading && (
-                  <Badge color="blue" variant="dot" size="sm">
-                    Streaming...
-                  </Badge>
-                )}
-              </Group>
-              <Tooltip label="Clear response">
-                <ActionIcon onClick={handleClear} variant="subtle" color="gray">
-                  <IconRefresh size={18} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-
-            <div className="w-full mx-auto p-4">
-              <Card
-                shadow="md"
-                radius="lg"
-                className="bg-white dark:bg-slate-900"
-                withBorder
-              >
-                <Divider my="xl" />
-
-                {/* Found Users List */}
-                <div className="mb-4">
-                  <Text fw={500} size="lg" className="text-slate-700  mb-4">
-                    Found Users
+          {/* Response Display */}
+          {users.length > 0 && (
+            <>
+              <Group justify="space-between" mb="sm">
+                <Group>
+                  <Text fw={600} size="lg" className="text-gray-700">
+                    Response
                   </Text>
+                  {isLoading && (
+                    <Badge color="blue" variant="dot" size="sm">
+                      Streaming...
+                    </Badge>
+                  )}
+                </Group>
+                <Tooltip label="Clear response">
+                  <ActionIcon
+                    onClick={handleClear}
+                    variant="subtle"
+                    color="gray"
+                  >
+                    <IconRefresh size={18} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
 
-                  <Stack gap="md">
-                    {users.map((userRes) => (
-                      <UserResultCard data={userRes} key={userRes.user._id} />
-                    ))}
-                  </Stack>
-                </div>
-              </Card>
-            </div>
-          </>
-        )}
-      </Stack>
-    </Card>
+              <div className="w-full mx-auto p-4">
+                <Card
+                  shadow="md"
+                  radius="lg"
+                  className="bg-white dark:bg-slate-900"
+                  withBorder
+                >
+                  <Divider my="xl" />
+
+                  {/* Found Users List */}
+                  <div className="mb-4">
+                    <Text fw={500} size="lg" className="text-slate-700  mb-4">
+                      Found Users
+                    </Text>
+
+                    <Stack gap="md">
+                      {users.map((userRes) => (
+                        <UserResultCard data={userRes} key={userRes.user._id} />
+                      ))}
+                    </Stack>
+                  </div>
+                </Card>
+              </div>
+            </>
+          )}
+        </Stack>
+      </Card>
+    </MainLayout>
   )
 }
 

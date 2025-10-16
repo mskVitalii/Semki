@@ -12,12 +12,12 @@ api.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true // защита от бесконечного цикла
+      originalRequest._retry = true // Guards from infinite loop
 
       try {
         const refreshToken = useAuthStore.getState().refreshToken
-        const { data } = await axios.post('/auth/refresh', { refreshToken })
-        useAuthStore.getState().setAuth(data.access, data.refresh)
+        const { data } = await api.post('/api/v1/refresh', { refreshToken })
+        useAuthStore.getState().setAuth(data.access_token, data.refresh_token)
 
         originalRequest.headers.Authorization = `Bearer ${data.access}`
         return api(originalRequest)

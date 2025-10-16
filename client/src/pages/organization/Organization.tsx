@@ -1,15 +1,16 @@
+import { MainLayout } from '@/common/SidebarLayout'
 import { Paper } from '@mantine/core'
-import { mockOrganization } from '@/utils/types'
 import OrganizationSettings from './OrganizationSettings'
-import Users from './OrganizationUsers'
+import OrganizationUsers from './OrganizationUsers'
 
 function Organization() {
-  // TODO: API organization
   return (
-    <Paper p="xl" className="mt-10 w-screen space-y-6!">
-      <OrganizationSettings />
-      <Users organization={mockOrganization} />
-    </Paper>
+    <MainLayout>
+      <Paper p="xl" className="mt-10 w-full space-y-6!">
+        <OrganizationSettings />
+        <OrganizationUsers />
+      </Paper>
+    </MainLayout>
   )
 }
 

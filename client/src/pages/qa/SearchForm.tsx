@@ -56,6 +56,7 @@ function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
               disabled={!question?.trim()}
               leftSection={<IconSend size={18} />}
               size="md"
+              color="green"
             >
               Send
             </Button>

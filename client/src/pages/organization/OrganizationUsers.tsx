@@ -1,9 +1,5 @@
-import {
-  mockUser,
-  type Organization,
-  type User,
-  UserStatuses,
-} from '@/utils/types'
+import { mockUser, type User, UserStatuses } from '@/common/types'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Badge,
   Button,
@@ -23,13 +19,11 @@ import { useMemo, useState } from 'react'
 import { v4 as uuid } from 'uuid'
 import OrganizationNewUserForm from './OrganizationNewUserForm'
 
-type InvitationFormProps = {
-  organization: Organization
-}
-
 const PAGE_SIZE = 5
 
-export function OrganizationUsers({ organization }: InvitationFormProps) {
+export function OrganizationUsers() {
+  const organization = useOrganizationStore((s) => s.organization)
+
   const [users, usersHandlers] = useListState<User>([mockUser])
   const [formOpened, { toggle: toggleForm }] = useDisclosure(false)
   const [search, setSearch] = useState('')
@@ -74,10 +68,7 @@ export function OrganizationUsers({ organization }: InvitationFormProps) {
           </Group>
 
           <Collapse in={formOpened}>
-            <OrganizationNewUserForm
-              organization={organization}
-              onSave={handleAddUser}
-            />
+            <OrganizationNewUserForm onSave={handleAddUser} />
           </Collapse>
         </Stack>
 
@@ -131,12 +122,12 @@ export function OrganizationUsers({ organization }: InvitationFormProps) {
                         <Table.Td>{user.name}</Table.Td>
                         <Table.Td>{user.email}</Table.Td>
                         <Table.Td>
-                          {organization.semantic.teams.find(
+                          {organization?.semantic.teams.find(
                             (t) => t.id === user.semantic.team,
                           )?.name || '—'}
                         </Table.Td>
                         <Table.Td>
-                          {organization.semantic.levels.find(
+                          {organization?.semantic.levels.find(
                             (l) => l.id === user.semantic.level,
                           )?.name || '—'}
                         </Table.Td>
