@@ -37,7 +37,7 @@ api.interceptors.response.use(
 
       try {
         const { data } = await api.post('/api/v1/refresh_token', {
-          refresh_token: refreshToken,
+          refreshToken,
         })
 
         useAuthStore.getState().setAuth(data.access_token, data.refresh_token)
