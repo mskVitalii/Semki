@@ -17,11 +17,11 @@ func TestUserEncryption(t *testing.T) {
 		Email:    "user@example.com",
 		Password: "password",
 		//Favourites: []model.UserFavourite{{
-		//	Id:       "place_id_1",
+		//	ID:       "place_id_1",
 		//	Coords:   model.Point{X: 1.0, Y: 1.0},
 		//	Category: "Schulen",
 		//}, {
-		//	Id:       "place_id_2",
+		//	ID:       "place_id_2",
 		//	Coords:   model.Point{X: 2.0, Y: 2.0},
 		//	Category: "Schulen",
 		//}},
@@ -40,7 +40,7 @@ func TestUserEncryption(t *testing.T) {
 	assert.NoError(t, err)
 	fmt.Println("Decrypted User:", decryptedUser)
 
-	assert.Equal(t, decryptedUser.Id, encryptedUser.Id)
+	assert.Equal(t, decryptedUser.ID, encryptedUser.ID)
 	assert.Equal(t, decryptedUser.Status, encryptedUser.Status)
 	assert.Equal(t, decryptedUser.Password, encryptedUser.Password)
 	assert.Equal(t, decryptedUser.Email, encryptedUser.Email)

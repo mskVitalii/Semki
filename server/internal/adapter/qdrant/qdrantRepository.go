@@ -131,7 +131,7 @@ func (r *repository) IndexUser(ctx context.Context, user model.User) error {
 		return fmt.Errorf("failed to generate user vector: %w", err)
 	}
 
-	pointID, err := r.userIDToPointID(user.Id.Hex())
+	pointID, err := r.userIDToPointID(user.ID.Hex())
 	if err != nil {
 		return fmt.Errorf("failed to convert user ID: %w", err)
 	}
@@ -239,7 +239,7 @@ func (r *repository) generateUserVector(user model.User) ([]float32, error) {
 	// TODO: Get the real Vector as param
 	vector := make([]float32, r.vectorSize)
 
-	data := fmt.Sprintf("%s:%s:%s", user.Id.Hex(), user.Email, user.Name)
+	data := fmt.Sprintf("%s:%s:%s", user.ID.Hex(), user.Email, user.Name)
 	hash := 0
 	for _, char := range data {
 		hash = (hash*31 + int(char)) % 1000000
@@ -270,7 +270,7 @@ func (r *repository) userToPayload(user model.User) (map[string]*qdrant.Value, e
 	payload := map[string]*qdrant.Value{
 		"user_id": {
 			Kind: &qdrant.Value_StringValue{
-				StringValue: user.Id.Hex(),
+				StringValue: user.ID.Hex(),
 			},
 		},
 		//"created_at": {

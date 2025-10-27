@@ -1,4 +1,4 @@
-import { login, type AuthErrorResponse } from '@/api/auth'
+import { login, register, type AuthErrorResponse } from '@/api/auth'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import {
@@ -29,7 +29,7 @@ export function Auth(props: PaperProps) {
   const { accessToken, setAuth } = useAuthStore()
   const [type, toggle] = useToggle(['login', 'register'])
   const { organizationDomain } = useOrganizationStore()
-  console.log('/login page')
+
   useEffect(() => {
     const accessTokenFromUrl = searchParams.get('accessToken')
     const refreshTokenFromUrl = searchParams.get('refreshToken')
@@ -48,12 +48,12 @@ export function Auth(props: PaperProps) {
 
     if (accessTokenFromUrl && refreshTokenFromUrl) {
       setAuth(accessTokenFromUrl, refreshTokenFromUrl)
-      navigate('/qa', { replace: true })
+      navigate('/chat', { replace: true })
       return
     }
 
     if (accessToken) {
-      navigate('/qa', { replace: true })
+      navigate('/chat', { replace: true })
     }
   }, [accessToken, navigate, searchParams, setAuth])
 
@@ -78,7 +78,25 @@ export function Auth(props: PaperProps) {
     mutationFn: login,
     onSuccess: (data) => {
       setAuth(data.access_token, data.refresh_token)
-      navigate('/qa', { replace: true })
+      navigate('/chat', { replace: true })
+    },
+    onError: (error: AxiosError<AuthErrorResponse>) => {
+      console.error(error)
+      notifications.show({
+        title: 'Auth error',
+        message: error.response?.data?.message || 'Wrong email or password',
+        color: 'red',
+      })
+    },
+  })
+
+  const registerMutation = useMutation({
+    mutationFn: register,
+    onSuccess: (data) => {
+      console.log('registerMutation', data)
+      setAuth(data.tokens.access_token, data.tokens.refresh_token)
+      // TODO: user
+      navigate('/chat', { replace: true })
     },
     onError: (error: AxiosError<AuthErrorResponse>) => {
       console.error(error)
@@ -91,15 +109,29 @@ export function Auth(props: PaperProps) {
   })
 
   const handleSubmit = (values: typeof form.values) => {
+    if (values.terms === false) {
+      notifications.show({
+        title: 'Terms not accepted',
+        message: 'You must accept the terms and conditions to proceed.',
+        color: 'red',
+      })
+      return
+    }
     if (type === 'login') {
       loginMutation.mutate({
         email: values.email,
         password: values.password,
         organization: organizationDomain,
       })
-    } else {
-      console.log('Register:', values)
+      return
     }
+
+    registerMutation.mutate({
+      name: values.name,
+      email: values.email,
+      password: values.password,
+      organization: organizationDomain,
+    })
   }
 
   return (

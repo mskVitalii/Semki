@@ -22,3 +22,28 @@ export const login = async (data: LoginDto): Promise<AuthResponse> => {
   const response = await api.post('/api/v1/login', data)
   return response.data
 }
+
+export interface RegisterDto {
+  name: string
+  email: string
+  password: string
+  organization: string
+}
+
+export interface RegisterUserResponse {
+  message: string
+  tokens: {
+    access_token: string
+    token_type: string
+    refresh_token: string
+    expires_at: number
+    created_at: number
+  }
+}
+
+export const register = async (
+  data: RegisterDto,
+): Promise<RegisterUserResponse> => {
+  const response = await api.post('/api/v1/user/register', data)
+  return response.data
+}

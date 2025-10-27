@@ -1,3 +1,4 @@
+import { chatHistory } from '@/api/chat'
 import { api } from '@/api/client'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
@@ -13,17 +14,6 @@ import {
 import { useInfiniteQuery, useMutation } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-
-interface ChatHistory {
-  id: string
-  title: string
-  createdAt: string
-}
-
-interface HistoryResponse {
-  items: ChatHistory[]
-  nextCursor?: string
-}
 
 interface SidebarProps {
   onNewChat: () => void
@@ -51,15 +41,7 @@ export function Sidebar({ onNewChat }: SidebarProps) {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
       queryKey: ['chatHistory'],
-      queryFn: async ({ pageParam }) => {
-        const { data } = await api.get<HistoryResponse>(
-          '/api/v1/chat/history',
-          {
-            params: { cursor: pageParam },
-          },
-        )
-        return data
-      },
+      queryFn: chatHistory,
       getNextPageParam: (lastPage) => lastPage.nextCursor,
       initialPageParam: undefined as string | undefined,
     })
@@ -72,7 +54,7 @@ export function Sidebar({ onNewChat }: SidebarProps) {
     }
   }, [entry?.isIntersecting, hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const allChats = data?.pages.flatMap((page) => page.items) ?? []
+  const allChats = data?.pages.flatMap((page) => page.chats) ?? []
 
   return (
     <Box className="relative h-screen w-80 flex flex-col border-r-2! border-[var(--mantine-color-dark-6)]!">

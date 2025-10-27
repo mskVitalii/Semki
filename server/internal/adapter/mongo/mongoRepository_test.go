@@ -19,11 +19,11 @@ func TestSoftDeleteUser(t *testing.T) {
 	db, repo, user, ctx := arrangeMongo(t)
 
 	// Act: Delete user
-	err := repo.DeleteUser(ctx, user.Id)
+	err := repo.DeleteUser(ctx, user.ID)
 	assert.NoError(t, err)
 
 	// Assert: Check status "deleted"
-	retrievedUser, err := repo.GetUserByID(ctx, user.Id)
+	retrievedUser, err := repo.GetUserByID(ctx, user.ID)
 	assert.NoError(t, err)
 	assert.Equal(t, model.UserStatuses.DELETED, retrievedUser.Status)
 
@@ -36,33 +36,33 @@ func TestUserTypes(t *testing.T) {
 
 	// Act =================== regular
 	// regular user can add only 1 home & 1 favourite
-	err := repo.UpdateUser(ctx, user.Id, model.User{
-		Id:       user.Id,
+	err := repo.UpdateUser(ctx, user.ID, model.User{
+		ID:       user.ID,
 		Email:    user.Email,
 		Password: user.Password,
 		Status:   user.Status,
 	})
 	assert.NoError(t, err)
-	_, err = repo.GetUserByID(ctx, user.Id)
+	_, err = repo.GetUserByID(ctx, user.ID)
 	assert.NoError(t, err)
 	//assert.Equal(t, len(userAfterAddingHome.Homes), 1)
 	//assert.Equal(t, len(userAfterAddingHome.Favourites), 1)
 
-	err = repo.UpdateUser(ctx, user.Id, model.User{
-		Id:       user.Id,
+	err = repo.UpdateUser(ctx, user.ID, model.User{
+		ID:       user.ID,
 		Email:    user.Email,
 		Password: user.Password,
 		Status:   user.Status,
 	})
 	assert.NoError(t, err)
-	_, err = repo.GetUserByID(ctx, user.Id)
+	_, err = repo.GetUserByID(ctx, user.ID)
 	assert.NoError(t, err)
 	//assert.Equal(t, len(userAfterAddingHome.Homes), 1)
 	//assert.Equal(t, len(userAfterAddingHome.Favourites), 1)
 
 	// Act =================== BUSINESS
-	err = repo.UpdateUser(ctx, user.Id, model.User{
-		Id:       user.Id,
+	err = repo.UpdateUser(ctx, user.ID, model.User{
+		ID:       user.ID,
 		Email:    user.Email,
 		Password: user.Password,
 		Status:   user.Status,
@@ -70,15 +70,15 @@ func TestUserTypes(t *testing.T) {
 	assert.NoError(t, err)
 
 	// BUSINESS user can add more than 1 home & more than 1 favourite place
-	err = repo.UpdateUser(ctx, user.Id, model.User{
-		Id:        user.Id,
+	err = repo.UpdateUser(ctx, user.ID, model.User{
+		ID:        user.ID,
 		Email:     user.Email,
 		Password:  user.Password,
 		Providers: []model.UserProvider{model.UserProviders.Google},
 		Status:    user.Status,
 	})
 	assert.NoError(t, err)
-	_, err = repo.GetUserByID(ctx, user.Id)
+	_, err = repo.GetUserByID(ctx, user.ID)
 	assert.NoError(t, err)
 	//assert.Equal(t, len(userAfterAddingHome.Homes), 2)
 	//assert.Equal(t, len(userAfterAddingHome.Favourites), 2)
@@ -86,7 +86,7 @@ func TestUserTypes(t *testing.T) {
 	cleanup(t, db, ctx)
 }
 
-func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IMongoRepository, model.User, context.Context) {
+func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IRepository, model.User, context.Context) {
 	cfg := config.GetConfig("../../../")
 	telemetry.SetupLogger(cfg)
 
@@ -102,7 +102,7 @@ func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IMongoRepository, model
 		Collections: clients.MongoCollectionsNames})
 
 	user := model.User{
-		Id:       primitive.NewObjectID(),
+		ID:       primitive.NewObjectID(),
 		Email:    "test@example.com",
 		Password: lib.HashPassword("password"),
 		Status:   model.UserStatuses.ACTIVE,
@@ -112,7 +112,7 @@ func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IMongoRepository, model
 	err = repo.CreateUser(ctx, &user)
 	assert.NoError(t, err)
 
-	_, err = repo.GetUserByID(ctx, user.Id)
+	_, err = repo.GetUserByID(ctx, user.ID)
 	assert.NoError(t, err)
 
 	return db, repo, user, ctx

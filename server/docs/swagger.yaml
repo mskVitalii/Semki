@@ -1,5 +1,34 @@
 basePath: /
 definitions:
+  dto.ChatHistoryItem:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      question:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+  dto.CreateChatRequest:
+    properties:
+      message:
+        type: string
+    required:
+    - message
+    type: object
+  dto.CreateChatResponse:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      message:
+        type: string
+      response:
+        type: string
+    type: object
   dto.CreateOrganizationRequest:
     properties:
       title:
@@ -37,6 +66,20 @@ definitions:
       message:
         type: string
     type: object
+  dto.GetChatResponse:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      messages:
+        items:
+          additionalProperties: true
+          type: object
+        type: array
+      updated_at:
+        type: integer
+    type: object
   dto.GetOrganizationResponse:
     properties:
       id:
@@ -48,6 +91,15 @@ definitions:
       status:
         type: string
       title:
+        type: string
+    type: object
+  dto.GetUserHistoryResponse:
+    properties:
+      chats:
+        items:
+          $ref: '#/definitions/dto.ChatHistoryItem'
+        type: array
+      nextCursor:
         type: string
     type: object
   dto.GetUserResponse:
@@ -132,8 +184,6 @@ definitions:
     properties:
       message:
         type: string
-      organization:
-        $ref: '#/definitions/model.Organization'
       tokens:
         properties:
           access_token:
@@ -147,8 +197,6 @@ definitions:
           token_type:
             type: string
         type: object
-      user:
-        $ref: '#/definitions/model.User'
     type: object
   dto.RestoreUserResponse:
     properties:
@@ -450,7 +498,7 @@ paths:
             $ref: '#/definitions/lib.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Retrieves an organization by its ID
+      summary: Retrieves an organization by user claims
       tags:
       - organizations
     post:
@@ -551,6 +599,11 @@ paths:
       description: Performs a semantic search for users using text embeddings and
         optional filters.
       parameters:
+      - description: Chat ID
+        in: query
+        name: chatId
+        required: true
+        type: string
       - description: Search query text for semantic similarity
         in: query
         name: q
@@ -607,7 +660,7 @@ paths:
       - BearerAuth: []
       summary: Semantic user search
       tags:
-      - search
+      - chat
   /api/v1/user:
     post:
       consumes:
@@ -822,6 +875,127 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /chat:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Chat creation request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateChatRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateChatResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create new chat
+      tags:
+      - chat
+  /chat/{id}:
+    get:
+      parameters:
+      - description: Chat ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetChatResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get chat by ID
+      tags:
+      - chat
+  /chat/history:
+    get:
+      parameters:
+      - description: Cursor for pagination
+        in: query
+        name: cursor
+        type: string
+      - default: 20
+        description: Number of items per page
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.GetUserHistoryResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user chat history
+      tags:
+      - chat
   /metrics:
     get:
       description: Logs that are collected by prometheus and visualized in grafana

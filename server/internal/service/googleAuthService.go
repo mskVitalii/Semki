@@ -17,20 +17,20 @@ import (
 
 // authService - dependent services
 type googleAuthService struct {
-	mongoRepo   mongo.IMongoRepository
+	repo        mongo.IRepository
 	google      google.Google
 	jwtAuth     *jwt.GinJWTMiddleware
 	frontendUrl string
 }
 
 func NewGoogleAuthService(
-	mongoRepo mongo.IMongoRepository,
+	repo mongo.IRepository,
 	google google.Google,
 	jwtAuth *jwt.GinJWTMiddleware,
 	frontendUrl string,
 ) routes.IGoogleAuthService {
 
-	return &googleAuthService{mongoRepo, google, jwtAuth, frontendUrl}
+	return &googleAuthService{repo, google, jwtAuth, frontendUrl}
 }
 
 // GoogleLoginHandler godoc
@@ -85,7 +85,7 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// DB
-	userFromDb, err := s.mongoRepo.GetUserByEmail(ctx, user.Email)
+	userFromDb, err := s.repo.GetUserByEmail(ctx, user.Email)
 	if err != nil {
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20db")
 		return
@@ -93,13 +93,13 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 
 	if userFromDb == nil {
 		userFromDb = dto.NewUserFromGoogleProvider(user)
-		if err := s.mongoRepo.CreateUser(ctx, userFromDb); err != nil {
+		if err := s.repo.CreateUser(ctx, userFromDb); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
 	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDb.Providers) == false {
 		userFromDb.Providers = append(userFromDb.Providers, model.UserProviders.Google)
-		if err := s.mongoRepo.UpdateUser(ctx, userFromDb.Id, *userFromDb); err != nil {
+		if err := s.repo.UpdateUser(ctx, userFromDb.ID, *userFromDb); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20update%20provider")
 			return
 		}

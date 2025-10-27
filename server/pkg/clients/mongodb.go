@@ -16,6 +16,7 @@ type MongoCollectionsNamesType struct {
 	Teams         string
 	Levels        string
 	Users         string
+	Chats         string
 }
 
 var MongoCollectionsNames = MongoCollectionsNamesType{
@@ -23,6 +24,7 @@ var MongoCollectionsNames = MongoCollectionsNamesType{
 	Teams:         "teams",
 	Levels:        "levels",
 	Users:         "users",
+	Chats:         "chats",
 }
 
 // endregion

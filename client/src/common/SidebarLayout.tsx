@@ -12,8 +12,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   const navigate = useNavigate()
 
   const handleNewChat = () => {
-    console.log('new!')
-    navigate('/qa', { replace: true })
+    navigate('/chat', { replace: true })
   }
 
   return (

@@ -19,7 +19,7 @@ type IUserService interface {
 }
 
 func RegisterUserRoutes(g *gin.RouterGroup, userService IUserService, securityHandler gin.HandlerFunc) {
-	g.POST(userCRUD, userService.CreateUser)
+	//g.POST(userCRUD, userService.CreateUser)
 	g.POST(userCRUD+"/register", userService.RegisterUser)
 	g.POST(userCRUD+"/invite", securityHandler, userService.InviteUser)
 	g.GET(userCRUD+"/:id", securityHandler, userService.GetUser)

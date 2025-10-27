@@ -7,7 +7,7 @@ const NotFound = lazy(() => import('./pages/404/NotFound'))
 const Landing = lazy(() => import('./pages/landing/Landing'))
 const Organization = lazy(() => import('./pages/organization/Organization'))
 const Profile = lazy(() => import('./pages/profile/Profile'))
-const QA = lazy(() => import('./pages/qa/QA'))
+const Chat = lazy(() => import('./pages/chat/Chat'))
 const Auth = lazy(() => import('./pages/auth/Auth'))
 const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'))
 
@@ -21,8 +21,8 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/profile/:userId" element={<Profile />} />
           <Route path="/organization" element={<Organization />} />
-          <Route path="/qa" element={<QA />} />
-          <Route path="/qa/:chatId" element={<QA />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:chatId" element={<Chat />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFound />} />

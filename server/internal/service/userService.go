@@ -18,14 +18,14 @@ import (
 
 // userService - dependent services
 type userService struct {
-	mongoRepo    mongo.IMongoRepository
+	repo         mongo.IRepository
 	emailService EmailService
 	jwtAuth      *jwt.GinJWTMiddleware
 	frontendUrl  string
 }
 
-func NewUserService(mongoRepo mongo.IMongoRepository, emailService EmailService, jwtAuth *jwt.GinJWTMiddleware, frontendUrl string) routes.IUserService {
-	return &userService{mongoRepo, emailService, jwtAuth, frontendUrl}
+func NewUserService(repo mongo.IRepository, emailService EmailService, jwtAuth *jwt.GinJWTMiddleware, frontendUrl string) routes.IUserService {
+	return &userService{repo, emailService, jwtAuth, frontendUrl}
 }
 
 // CreateUser godoc
@@ -57,7 +57,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 		return
 	}
 
-	userByEmail, err := s.mongoRepo.GetUserByEmail(ctx, userDto.Email)
+	userByEmail, err := s.repo.GetUserByEmail(ctx, userDto.Email)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check user existence")
 		return
@@ -71,7 +71,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 		}
 		userByEmail.Password = lib.HashPassword(userDto.Password)
 		userByEmail.Providers = append(userByEmail.Providers, model.UserProviders.Email)
-		if err := s.mongoRepo.UpdateUser(ctx, userByEmail.Id, *userByEmail); err != nil {
+		if err := s.repo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
 			lib.ResponseInternalServerError(c, err, "Error while adding Email Provider to existing user")
 			return
 		}
@@ -83,7 +83,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 	// Creating user
 	user := dto.NewUserFromRequest(userDto)
 
-	if err := s.mongoRepo.CreateUser(ctx, user); err != nil {
+	if err := s.repo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")
 		return
 	}
@@ -121,7 +121,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	userByEmail, err := s.mongoRepo.GetUserByEmail(ctx, userDto.Email)
+	userByEmail, err := s.repo.GetUserByEmail(ctx, userDto.Email)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check user existence")
 		return
@@ -135,12 +135,12 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		}
 		userByEmail.Password = lib.HashPassword(userDto.Password)
 		userByEmail.Providers = append(userByEmail.Providers, model.UserProviders.Email)
-		if err := s.mongoRepo.UpdateUser(ctx, userByEmail.Id, *userByEmail); err != nil {
+		if err := s.repo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
 			lib.ResponseInternalServerError(c, err, "Error while adding Email Provider to existing user")
 			return
 		}
 
-		organization, err := s.mongoRepo.GetOrganizationByID(ctx, userByEmail.OrganizationId)
+		_, err := s.repo.GetOrganizationByID(ctx, userByEmail.OrganizationID)
 		if err != nil {
 			lib.ResponseInternalServerError(c, err, "Failed to get organization")
 			return
@@ -154,7 +154,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, dto.RegisterUserResponse{Message: "Added Email Provider to existing User", User: *userByEmail, Organization: *organization, Tokens: *jwtToken})
+		c.JSON(http.StatusOK, dto.RegisterUserResponse{Message: "Added Email Provider to existing User", Tokens: *jwtToken})
 		return
 	}
 
@@ -162,16 +162,16 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	organization := dto.NewOrganizationFromRequest(dto.CreateOrganizationRequest{
 		Title: fmt.Sprintf("%s's organization", userDto.Email),
 	})
-	err = s.mongoRepo.CreateOrganization(ctx, organization)
+	err = s.repo.CreateOrganization(ctx, organization)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create organization")
 		return
 	}
 
 	user := dto.NewUserFromRequest(userDto.CreateUserRequest)
-	user.OrganizationId = organization.Id
+	user.OrganizationID = organization.ID
 
-	if err := s.mongoRepo.CreateUser(ctx, user); err != nil {
+	if err := s.repo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")
 		return
 	}
@@ -192,7 +192,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
 		return
 	}
-	c.JSON(http.StatusCreated, dto.RegisterUserResponse{Message: "User created", User: *user, Organization: organization, Tokens: *jwtToken})
+	c.JSON(http.StatusCreated, dto.RegisterUserResponse{Message: "User created", Tokens: *jwtToken})
 }
 
 // GetUser godoc
@@ -225,7 +225,7 @@ func (s *userService) GetUser(c *gin.Context) {
 		})
 		return
 	}
-	userId := userClaims.(*jwtUtils.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).ID
 	if userId != paramObjectId {
 		c.JSON(http.StatusForbidden, dto.UnauthorizedResponse{Message: "Forbidden"})
 		return
@@ -233,7 +233,7 @@ func (s *userService) GetUser(c *gin.Context) {
 	telemetry.Log.Info(fmt.Sprintf("GetUser -> userId%s", userId))
 
 	ctx := c.Request.Context()
-	user, err := s.mongoRepo.GetUserByID(ctx, paramObjectId)
+	user, err := s.repo.GetUserByID(ctx, paramObjectId)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get user")
 		return
@@ -298,9 +298,9 @@ func (s *userService) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	userId := userClaims.(*jwtUtils.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).ID
 
-	if userId != user.Id || userId != paramObjectId {
+	if userId != user.ID || userId != paramObjectId {
 		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be the same user")
 		return
 	}
@@ -310,7 +310,7 @@ func (s *userService) UpdateUser(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userByID, err := s.mongoRepo.GetUserByID(ctx, paramObjectId)
+	userByID, err := s.repo.GetUserByID(ctx, paramObjectId)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("User doesn't exist"), "Use correct id")
 		return
@@ -323,7 +323,7 @@ func (s *userService) UpdateUser(c *gin.Context) {
 		user.Password = userByID.Password
 	}
 
-	if err := s.mongoRepo.UpdateUser(ctx, paramObjectId, user); err != nil {
+	if err := s.repo.UpdateUser(ctx, paramObjectId, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update user")
 		return
 	}
@@ -354,16 +354,16 @@ func (s *userService) DeleteUser(c *gin.Context) {
 
 	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
-	userId := userClaims.(*jwtUtils.UserClaims).Id
+	userId := userClaims.(*jwtUtils.UserClaims).ID
 	if userId != paramObjectId {
 		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be for the same user")
 		return
 	}
 
-	if err := s.mongoRepo.DeleteUser(ctx, paramObjectId); err != nil {
+	if err := s.repo.DeleteUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete user")
 		return
 	}
@@ -394,12 +394,12 @@ func (s *userService) RestoreUser(c *gin.Context) {
 
 	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Unauthorized"})
 		return
 	}
 	claims, ok := userClaims.(*jwtUtils.UserClaims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "wrong claims"})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
 
@@ -408,7 +408,7 @@ func (s *userService) RestoreUser(c *gin.Context) {
 		return
 	}
 
-	if err := s.mongoRepo.RestoreUser(ctx, paramObjectId); err != nil {
+	if err := s.repo.RestoreUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to restore user")
 		return
 	}
@@ -430,12 +430,12 @@ func (s *userService) RestoreUser(c *gin.Context) {
 func (s *userService) InviteUser(c *gin.Context) {
 	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Unauthorized"})
 		return
 	}
 	claims, ok := userClaims.(*jwtUtils.UserClaims)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "wrong claims"})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
 
@@ -458,12 +458,12 @@ func (s *userService) InviteUser(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.mongoRepo.CreateUser(ctx, user); err != nil {
+	if err := s.repo.CreateUser(ctx, user); err != nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	organization, err := s.mongoRepo.GetOrganizationByID(ctx, claims.OrganizationId)
+	organization, err := s.repo.GetOrganizationByID(ctx, claims.OrganizationId)
 	if err != nil || organization == nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: "Organization not found"})
 		return
@@ -477,6 +477,6 @@ func (s *userService) InviteUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.InviteUserResponse{
 		Message: "User invited successfully",
-		UserId:  user.Id.Hex(),
+		UserId:  user.ID.Hex(),
 	})
 }

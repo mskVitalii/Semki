@@ -17,11 +17,11 @@ import (
 
 // organizationService - dependent services
 type organizationService struct {
-	mongoRepo mongo.IMongoRepository
+	repo mongo.IRepository
 }
 
-func NewOrganizationService(mongoRepo mongo.IMongoRepository) routes.IOrganizationService {
-	return &organizationService{mongoRepo}
+func NewOrganizationService(repo mongo.IRepository) routes.IOrganizationService {
+	return &organizationService{repo}
 }
 
 // CreateOrganization godoc
@@ -46,7 +46,7 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	organizationByTitle, err := s.mongoRepo.GetOrganizationByTitle(ctx, organizationDto.Title)
+	organizationByTitle, err := s.repo.GetOrganizationByTitle(ctx, organizationDto.Title)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check organization existence")
 		return
@@ -59,7 +59,7 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 	// Creating organization
 	organization := dto.NewOrganizationFromRequest(organizationDto)
 
-	if err := s.mongoRepo.CreateOrganization(ctx, organization); err != nil {
+	if err := s.repo.CreateOrganization(ctx, organization); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create organization")
 		return
 	}
@@ -69,7 +69,7 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 
 // GetOrganization godoc
 //
-//	@Summary		Retrieves an organization by its ID
+//	@Summary		Retrieves an organization by user claims
 //	@Description	Retrieves an organization from the MongoDB database by its ID.
 //	@Tags			organizations
 //	@Produce		json
@@ -82,16 +82,14 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 func (s *organizationService) GetOrganization(c *gin.Context) {
 	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{
-			Message: "unauthorized",
-		})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
 	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
 	telemetry.Log.Info(fmt.Sprintf("GetOrganization -> organizationId%s", organizationId))
 
 	ctx := c.Request.Context()
-	organization, err := s.mongoRepo.GetOrganizationByID(ctx, organizationId)
+	organization, err := s.repo.GetOrganizationByID(ctx, organizationId)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get organization")
 		return
@@ -142,13 +140,13 @@ func (s *organizationService) UpdateOrganization(c *gin.Context) {
 	}
 	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
 
-	if organizationId != organization.Id || organizationId != paramObjectId {
+	if organizationId != organization.ID || organizationId != paramObjectId {
 		lib.ResponseBadRequest(c, errors.New("Wrong organization id"), "Organization id must be the same organization")
 		return
 	}
 	ctx := c.Request.Context()
 
-	if err := s.mongoRepo.UpdateOrganization(ctx, paramObjectId, organization); err != nil {
+	if err := s.repo.UpdateOrganization(ctx, paramObjectId, organization); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update organization")
 		return
 	}
@@ -185,7 +183,7 @@ func (s *organizationService) DeleteOrganization(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.mongoRepo.DeleteOrganization(ctx, organizationId); err != nil {
+	if err := s.repo.DeleteOrganization(ctx, organizationId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete organization")
 		return
 	}

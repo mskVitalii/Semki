@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"net/http"
+	"semki/pkg/lib"
 	"time"
 )
 
@@ -17,7 +18,7 @@ func RedisRateLimit(rdb *redis.Client, limit int, window time.Duration, endpoint
 
 		count, err := rdb.Incr(ctx, key).Result()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+			lib.ResponseInternalServerError(c, err, "Internal error")
 			c.Abort()
 			return
 		}
@@ -27,7 +28,7 @@ func RedisRateLimit(rdb *redis.Client, limit int, window time.Duration, endpoint
 		}
 
 		if count > int64(limit) {
-			c.JSON(http.StatusTooManyRequests, gin.H{"error": "rate limit exceeded"})
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
 			c.Abort()
 			return
 		}

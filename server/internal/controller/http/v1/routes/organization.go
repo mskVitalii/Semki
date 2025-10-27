@@ -17,7 +17,7 @@ type IOrganizationService interface {
 
 func RegisterOrganizationRoutes(g *gin.RouterGroup, organizationService IOrganizationService, securityHandler gin.HandlerFunc) {
 	g.POST(organizationCRUD, organizationService.CreateOrganization)
-	g.GET(organizationCRUD+"/:id", securityHandler, organizationService.GetOrganization)
+	g.GET(organizationCRUD, securityHandler, organizationService.GetOrganization)
 	g.PUT(organizationCRUD+"/:id", securityHandler, organizationService.UpdateOrganization)
 	g.DELETE(organizationCRUD+"/:id", securityHandler, organizationService.DeleteOrganization)
 }

@@ -4,7 +4,8 @@ import "semki/internal/model"
 
 // SearchRequest represents the search query parameters
 type SearchRequest struct {
-	Query     string   `form:"q" json:"q"`
+	ChatId    string   `form:"chatId" json:"chatId" binding:"required"`
+	Query     string   `form:"q" json:"q" binding:"required"`
 	Teams     []string `form:"teams" json:"teams"`
 	Levels    []string `form:"levels" json:"levels"`
 	Locations []string `form:"locations" json:"locations"`

@@ -87,7 +87,7 @@ func startup(cfg *config.Config) {
 
 	qdrantRepo := qdrant.New(cfg, vectorDb)
 	mongoRepo := mongo.New(cfg, db)
-	statusService := service.NewStatusService()
+	statusService := service.NewStatusService(mongoRepo)
 	emailService := service.NewEmailService(
 		cfg.SMTP.Host,
 		cfg.SMTP.Port,
@@ -104,6 +104,7 @@ func startup(cfg *config.Config) {
 	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
 	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
+	chatService := service.NewChatService(mongoRepo)
 
 	var googleAuthService routes.IGoogleAuthService
 	if cfg.Google.Enabled {
@@ -172,6 +173,7 @@ func startup(cfg *config.Config) {
 		routes.RegisterOrganizationRoutes(apiV1, organizationService, withAuth)
 		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, authMiddleware, withAuth, logoutHandler)
 		routes.RegisterSearchRoutes(apiV1, searchService, withAuth, redis)
+		routes.RegisterChatRoutes(apiV1, chatService, withAuth, redis)
 	}
 	r.NoRoute(jwtUtils.NoRoute)
 	// endregion

@@ -15,11 +15,11 @@ import (
 
 // authService - dependent services
 type authService struct {
-	mongoRepo mongo.IMongoRepository
+	repo mongo.IRepository
 }
 
-func NewAuthService(mongoRepo mongo.IMongoRepository) routes.IAuthService {
-	return &authService{mongoRepo}
+func NewAuthService(repo mongo.IRepository) routes.IAuthService {
+	return &authService{repo}
 }
 
 // RefreshTokenHandler godoc
@@ -76,7 +76,7 @@ func (s *authService) Authenticate(request dto.LoginRequest) (*model.User, error
 		return nil, errors.New("invalid password")
 	}
 
-	user, err := s.mongoRepo.GetUserByEmail(ctx, request.Email)
+	user, err := s.repo.GetUserByEmail(ctx, request.Email)
 	if err != nil {
 		return nil, err
 	}

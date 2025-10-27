@@ -29,10 +29,8 @@ type CreateUserResponse struct {
 }
 
 type RegisterUserResponse struct {
-	Message      string             `json:"message"`
-	User         model.User         `json:"user"`
-	Organization model.Organization `json:"organization"`
-	Tokens       struct {
+	Message string `json:"message"`
+	Tokens  struct {
 		AccessToken  string `json:"access_token"`
 		TokenType    string `json:"token_type"`
 		RefreshToken string `json:"refresh_token,omitempty"`
@@ -84,14 +82,14 @@ type UserContactRequest struct {
 // UserToInvite converts InviteUserRequest DTO to User model
 func (req *InviteUserRequest) UserToInvite(organizationId primitive.ObjectID) (*model.User, error) {
 	user := &model.User{
-		Id:               primitive.NewObjectID(),
+		ID:               primitive.NewObjectID(),
 		Email:            req.Email,
 		Password:         "", // No password for invited users
 		Name:             req.Name,
 		Providers:        []model.UserProvider{},
 		Verified:         false,
 		Status:           model.UserStatuses.INVITED,
-		OrganizationId:   organizationId,
+		OrganizationID:   organizationId,
 		OrganizationRole: req.OrganizationRole,
 	}
 
@@ -137,11 +135,9 @@ func (req *InviteUserRequest) UserToInvite(organizationId primitive.ObjectID) (*
 	return user, nil
 }
 
-// TODO: check
-
 func NewUserFromRequest(req CreateUserRequest) *model.User {
 	return &model.User{
-		Id:        primitive.NewObjectID(),
+		ID:        primitive.NewObjectID(),
 		Email:     req.Email,
 		Password:  lib.HashPassword(req.Password),
 		Providers: []model.UserProvider{model.UserProviders.Email},
@@ -151,7 +147,7 @@ func NewUserFromRequest(req CreateUserRequest) *model.User {
 
 func NewUserFromGoogleProvider(user CreateUserByGoogleProvider) *model.User {
 	return &model.User{
-		Id:        primitive.NewObjectID(),
+		ID:        primitive.NewObjectID(),
 		Email:     user.Email,
 		Password:  "",
 		Providers: []model.UserProvider{model.UserProviders.Google},

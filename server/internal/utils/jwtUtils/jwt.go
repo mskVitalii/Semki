@@ -91,7 +91,7 @@ func NoRoute(c *gin.Context) {
 // region Payload
 
 type UserClaims struct {
-	Id               primitive.ObjectID     `json:"_id"`
+	ID               primitive.ObjectID     `json:"_id"`
 	OrganizationId   primitive.ObjectID     `json:"organizationId"`
 	OrganizationRole model.OrganizationRole `json:"organizationRole"`
 }
@@ -103,8 +103,8 @@ func UserToPayload(data interface{}) (*UserClaims, error) {
 	}
 
 	return &UserClaims{
-		Id:               user.Id,
-		OrganizationId:   user.OrganizationId,
+		ID:               user.ID,
+		OrganizationId:   user.OrganizationID,
 		OrganizationRole: user.OrganizationRole,
 	}, nil
 }
@@ -112,7 +112,7 @@ func UserToPayload(data interface{}) (*UserClaims, error) {
 func payloadFunc(data interface{}) gojwt.MapClaims {
 	if v, err := UserToPayload(data); err == nil {
 		return gojwt.MapClaims{
-			IdentityKey:        v.Id.Hex(),
+			IdentityKey:        v.ID.Hex(),
 			"organizationId":   v.OrganizationId.Hex(),
 			"organizationRole": string(v.OrganizationRole),
 		}
@@ -150,7 +150,7 @@ func identity(c *gin.Context) interface{} {
 	orgRole, _ := claims["organizationRole"].(string)
 
 	return &UserClaims{
-		Id:               id,
+		ID:               id,
 		OrganizationId:   orgId,
 		OrganizationRole: model.OrganizationRole(orgRole),
 	}
@@ -168,7 +168,7 @@ func authorization(_ *gin.Context, _ any) bool {
 
 func unauthorized(c *gin.Context, code int, message string) {
 	if v, exists := c.Get("auth_error"); exists && v == "blacklisted" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "token is blacklisted"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is blacklisted"})
 		return
 	}
 	c.JSON(code, dto.UnauthorizedResponse{Message: message})

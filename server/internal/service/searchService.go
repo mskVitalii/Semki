@@ -3,24 +3,29 @@ package service
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 	"io"
+	"net/http"
 	"semki/internal/adapter/mongo"
 	"semki/internal/adapter/qdrant"
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
+	"semki/internal/model"
+	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type searchService struct {
 	embedder   IEmbedderService
 	qdrantRepo qdrant.IQdrantRepository
-	mongoRepo  mongo.IMongoRepository
+	repo       mongo.IRepository
 	logger     *zap.Logger
 }
 
@@ -28,13 +33,13 @@ type searchService struct {
 func NewSearchService(
 	embedder IEmbedderService,
 	qdrantRepo qdrant.IQdrantRepository,
-	mongoRepo mongo.IMongoRepository,
+	repo mongo.IRepository,
 	logger *zap.Logger,
 ) routes.ISearchService {
 	return &searchService{
 		embedder:   embedder,
 		qdrantRepo: qdrantRepo,
-		mongoRepo:  mongoRepo,
+		repo:       repo,
 		logger:     logger,
 	}
 }
@@ -43,11 +48,12 @@ func NewSearchService(
 //
 //	@Summary		Semantic user search
 //	@Description	Performs a semantic search for users using text embeddings and optional filters.
-//					Results are streamed one by one with optional AI-generated descriptions.
-//	@Tags			search
+//						Results are streamed one by one with optional AI-generated descriptions.
+//	@Tags			chat
 //	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		text/event-stream
+//	@Param			chatId		query		string									true	"Chat ID"
 //	@Param			q			query		string									false	"Search query text for semantic similarity"
 //	@Param			teams		query		[]string								false	"Filter users by team names (can be multiple)"
 //	@Param			levels		query		[]string								false	"Filter users by experience levels (can be multiple)"
@@ -58,11 +64,11 @@ func NewSearchService(
 //	@Failure		401			{object}	dto.UnauthorizedResponse				"Unauthorized"
 //	@Failure		500			{object}	map[string]string						"Internal server error during search or embedding"
 //	@Router			/api/v1/search [get]
-func (s *searchService) Search(ctx *gin.Context) {
+func (s *searchService) Search(c *gin.Context) {
 	var req dto.SearchRequest
-	if err := parseSearchRequest(ctx, &req); err != nil {
+	if err := parseSearchRequest(c, &req); err != nil {
 		s.logger.Error("Failed to parse search request: " + err.Error())
-		lib.ResponseBadRequest(ctx, err, "Invalid search parameters")
+		lib.ResponseBadRequest(c, err, "Invalid search parameters")
 		return
 	}
 	if req.Limit > 20 {
@@ -71,11 +77,37 @@ func (s *searchService) Search(ctx *gin.Context) {
 		req.Limit = 5
 	}
 
+	userClaims, claimsExists := c.Get(jwtUtils.IdentityKey)
+	if userClaims == nil || claimsExists == false {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
+		return
+	}
+	claims := userClaims.(*jwtUtils.UserClaims)
+	userID := claims.ID
+	chatID := claims.OrganizationId
+
+	ctx := c.Request.Context()
+
+	chatObjID, err := mongoUtils.StringToObjectID(req.ChatId)
+	if err != nil {
+		lib.ResponseBadRequest(c, err, "invalid chat id")
+		return
+	}
+
+	chat, err := s.repo.GetChatByID(c.Request.Context(), chatObjID, userID)
+	if err != nil {
+		lib.ResponseInternalServerError(c, err, "failed to fetch chat")
+		return
+	} else if chat == nil {
+		lib.ResponseBadRequest(c, err, "chat does not exist")
+		return
+	}
+
 	vector, err := s.embedder.Embed(req.Query)
 	if err != nil {
 		desc := fmt.Sprintf("Failed to generate embedding: %v", err)
 		s.logger.Error(desc)
-		lib.ResponseInternalServerError(ctx, err, desc)
+		lib.ResponseInternalServerError(c, err, desc)
 		return
 	}
 
@@ -87,10 +119,10 @@ func (s *searchService) Search(ctx *gin.Context) {
 		Limit:     req.Limit,
 	}
 
-	vectorSearchResults, err := s.qdrantRepo.SearchUserByVector(ctx.Request.Context(), vector, filters)
+	vectorSearchResults, err := s.qdrantRepo.SearchUserByVector(ctx, vector, filters)
 	if err != nil {
 		s.logger.Error("Search failed: " + err.Error())
-		lib.ResponseInternalServerError(ctx, err, "Search failed")
+		lib.ResponseInternalServerError(c, err, "Search failed")
 		return
 	}
 
@@ -104,10 +136,10 @@ func (s *searchService) Search(ctx *gin.Context) {
 		userIDs = append(userIDs, oid)
 	}
 
-	users, err := s.mongoRepo.GetUsersByIDs(ctx, userIDs)
+	users, err := s.repo.GetUsersByIDs(ctx, userIDs)
 	if err != nil {
 		s.logger.Error("Failed to get users by IDs: " + err.Error())
-		lib.ResponseInternalServerError(ctx, err, "Search failed")
+		lib.ResponseInternalServerError(c, err, "Search failed")
 		return
 	}
 
@@ -120,7 +152,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 			continue
 		}
 		for _, u := range users {
-			if u.Id == oid {
+			if u.ID == oid {
 				results = append(results, dto.SearchResultWithUser{
 					Score: res.Score,
 					User:  u,
@@ -130,7 +162,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 		}
 	}
 
-	ctx.Stream(func(w io.Writer) bool {
+	c.Stream(func(w io.Writer) bool {
 		resultsChan := make(chan dto.SearchResultWithUserAndDescription)
 		go func() {
 			defer close(resultsChan)
@@ -155,7 +187,23 @@ func (s *searchService) Search(ctx *gin.Context) {
 		}()
 
 		for res := range resultsChan {
-			ctx.SSEvent("result", res)
+			c.SSEvent("result", res)
+
+			go func(result dto.SearchResultWithUserAndDescription) {
+				message := model.Message{
+					Role: "assistant",
+					Content: bson.M{
+						"score":       result.Score,
+						"user":        result.User,
+						"description": result.Description,
+					},
+					Timestamp: time.Now(),
+				}
+
+				if err := s.repo.AddChatMessages(ctx, chatID, []model.Message{message}); err != nil {
+					s.logger.Error("Failed to save chat message: " + err.Error())
+				}
+			}(res)
 		}
 
 		return false
@@ -166,6 +214,7 @@ func (s *searchService) Search(ctx *gin.Context) {
 // Formats: ?teams=team1,team2 или ?teams[]=team1&teams[]=team2
 func parseSearchRequest(ctx *gin.Context, req *dto.SearchRequest) error {
 	req.Query = ctx.Query("q")
+	req.ChatId = ctx.Query("chat_id")
 
 	// Teams
 	if teams := ctx.Query("teams"); teams != "" {

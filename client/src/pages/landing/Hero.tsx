@@ -16,7 +16,7 @@ export function Hero() {
       <div className="flex min-h-screen justify-between items-center pt-[calc(var(--mantine-spacing-xl)*4)] pb-[calc(var(--mantine-spacing-xl)*4)]">
         <div className="max-w-[480px] mr-[calc(var(--mantine-spacing-xl)*3)] md:max-w-full md:mr-0">
           <Logo />
-          <Title className="text-[light-dark(var(--mantine-color-black),var(--mantine-color-white))] font-[Outfit,var(--mantine-font-family)] text-[44px] leading-[1.2] font-medium xs:text-[28px]">
+          <Title className="text-[var(--mantine-color-white)] font-[Outfit,var(--mantine-font-family)] text-[44px] leading-[1.2] font-medium xs:text-[28px]">
             A
             <span className="relative bg-[var(--mantine-color-green-light)] rounded-[var(--mantine-radius-sm)] py-2 px-3">
               {' '}

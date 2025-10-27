@@ -57,7 +57,7 @@ type UserContact struct {
 }
 
 type User struct {
-	Id               primitive.ObjectID `json:"_id" bson:"_id"`
+	ID               primitive.ObjectID `json:"_id" bson:"_id"`
 	Email            string             `json:"email" bson:"email"`
 	Password         string             `json:"password" bson:"password"`
 	Name             string             `json:"name" bson:"name"`
@@ -67,6 +67,6 @@ type User struct {
 	Semantic         UserSemantic       `json:"semantic" bson:"semantic"`
 	Contact          UserContact        `json:"contact" bson:"contact"`
 	AvatarID         primitive.ObjectID `json:"avatarId" bson:"avatarId"`
-	OrganizationId   primitive.ObjectID `json:"organizationId" bson:"organizationId"`
+	OrganizationID   primitive.ObjectID `json:"organizationId" bson:"organizationId"`
 	OrganizationRole OrganizationRole   `json:"organizationRole" bson:"organizationRole"`
 }

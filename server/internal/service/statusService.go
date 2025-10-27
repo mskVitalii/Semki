@@ -1,18 +1,21 @@
 package service
 
 import (
+	"context"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"semki/internal/adapter/mongo"
 	"semki/internal/controller/http/v1/routes"
 	"time"
 )
 
 // statusService - dependent services
 type statusService struct {
+	repo mongo.IRepository
 }
 
-func NewStatusService() routes.IStatusService {
-	return &statusService{}
+func NewStatusService(repo mongo.IRepository) routes.IStatusService {
+	return &statusService{repo: repo}
 }
 
 // HealthCheck godoc
@@ -24,7 +27,18 @@ func NewStatusService() routes.IStatusService {
 //	@Success		200
 //	@Router			/api/v1/healthcheck [get]
 func (s statusService) HealthCheck(c *gin.Context) {
-	// TODO: check if mongo connection still alive
+	ctx, cancel := context.WithTimeout(c, 2*time.Second)
+	defer cancel()
+
+	if err := s.repo.HealthCheck(ctx); err != nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"message":   "Mongo unavailable",
+			"error":     err.Error(),
+			"timestamp": time.Now().UnixNano() / int64(time.Millisecond),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message":   "OK",
 		"timestamp": time.Now().UnixNano() / int64(time.Millisecond),

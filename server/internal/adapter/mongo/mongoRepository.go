@@ -3,16 +3,20 @@ package mongo
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"semki/internal/model"
 	"semki/internal/utils/config"
 	"semki/internal/utils/crypto"
 	"semki/pkg/clients"
+	"time"
 )
 
-type IMongoRepository interface {
+type IRepository interface {
 	CreateUser(ctx context.Context, user *model.User) error
 	GetUserByID(ctx context.Context, id primitive.ObjectID) (*model.User, error)
 	GetUsersByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*model.User, error)
@@ -26,21 +30,29 @@ type IMongoRepository interface {
 	GetOrganizationByTitle(ctx context.Context, email string) (*model.Organization, error)
 	UpdateOrganization(ctx context.Context, id primitive.ObjectID, organization model.Organization) error
 	DeleteOrganization(ctx context.Context, id primitive.ObjectID) error
+
+	CreateChat(ctx context.Context, chat *model.Chat) error
+	GetChatByID(ctx context.Context, id primitive.ObjectID, userID primitive.ObjectID) (*model.Chat, error)
+	GetChatsByUserIDWithCursor(ctx context.Context, userID primitive.ObjectID, cursor string, limit int) ([]model.Chat, string, error)
+	DeleteChat(ctx context.Context, id primitive.ObjectID) error
+	AddChatMessages(ctx context.Context, chatId primitive.ObjectID, messages []model.Message) error
+
+	HealthCheck(ctx context.Context) error
 }
 
 type repository struct {
 	config *config.Config
-	db     *clients.MongoDb
+	client *clients.MongoDb
 }
 
-func New(cfg *config.Config, db *clients.MongoDb) IMongoRepository {
-	return &repository{cfg, db}
+func New(cfg *config.Config, client *clients.MongoDb) IRepository {
+	return &repository{cfg, client}
 }
 
 //region Users
 
-func (r repository) GetUsersByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*model.User, error) {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) GetUsersByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*model.User, error) {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 
 	filter := bson.M{"_id": bson.M{"$in": ids}}
 	cursor, err := coll.Find(ctx, filter)
@@ -69,8 +81,8 @@ func (r repository) GetUsersByIDs(ctx context.Context, ids []primitive.ObjectID)
 	return users, nil
 }
 
-func (r repository) CreateUser(ctx context.Context, user *model.User) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) CreateUser(ctx context.Context, user *model.User) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 	encryptedUser, err := crypto.EncryptUserFields(*user, r.config.CryptoKey)
 	if err != nil {
 		return err
@@ -79,8 +91,8 @@ func (r repository) CreateUser(ctx context.Context, user *model.User) error {
 	return err
 }
 
-func (r repository) GetUserByID(ctx context.Context, id primitive.ObjectID) (*model.User, error) {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) GetUserByID(ctx context.Context, id primitive.ObjectID) (*model.User, error) {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 	var user model.User
 	err := coll.FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
@@ -96,16 +108,16 @@ func (r repository) GetUserByID(ctx context.Context, id primitive.ObjectID) (*mo
 	return decryptedUser, nil
 }
 
-func (r repository) UpdateUser(ctx context.Context, id primitive.ObjectID, user model.User) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) UpdateUser(ctx context.Context, id primitive.ObjectID, user model.User) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 	encryptedUser, err := crypto.EncryptUserFields(user, r.config.CryptoKey)
 	_, err = coll.ReplaceOne(ctx, bson.M{"_id": id}, bson.M{"$set": encryptedUser})
 	return err
 }
 
 // DeleteUser performs soft-delete by changing status to "deleted"
-func (r repository) DeleteUser(ctx context.Context, id primitive.ObjectID) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) DeleteUser(ctx context.Context, id primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 
 	update := bson.M{"$set": bson.M{"status": model.UserStatuses.DELETED}}
 	_, err := coll.UpdateOne(ctx, bson.M{"_id": id}, update)
@@ -113,16 +125,16 @@ func (r repository) DeleteUser(ctx context.Context, id primitive.ObjectID) error
 }
 
 // RestoreUser restores user by changing status to "active"
-func (r repository) RestoreUser(ctx context.Context, id primitive.ObjectID) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) RestoreUser(ctx context.Context, id primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 
 	update := bson.M{"$set": bson.M{"status": model.UserStatuses.ACTIVE}}
 	_, err := coll.UpdateOne(ctx, bson.M{"_id": id}, update)
 	return err
 }
 
-func (r repository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) GetUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 	var user model.User
 	err := coll.FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
@@ -140,16 +152,16 @@ func (r repository) GetUserByEmail(ctx context.Context, email string) (*model.Us
 
 //endregion
 
-//region Organization
+//region Organizations
 
-func (r repository) CreateOrganization(ctx context.Context, organization model.Organization) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Organizations)
+func (r *repository) CreateOrganization(ctx context.Context, organization model.Organization) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
 	_, err := coll.InsertOne(ctx, organization)
 	return err
 }
 
-func (r repository) GetOrganizationByID(ctx context.Context, id primitive.ObjectID) (*model.Organization, error) {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Organizations)
+func (r *repository) GetOrganizationByID(ctx context.Context, id primitive.ObjectID) (*model.Organization, error) {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
 	var organization model.Organization
 	err := coll.FindOne(ctx, bson.M{"_id": id}).Decode(&organization)
 	if err != nil {
@@ -161,8 +173,8 @@ func (r repository) GetOrganizationByID(ctx context.Context, id primitive.Object
 	return &organization, nil
 }
 
-func (r repository) GetOrganizationByTitle(ctx context.Context, title string) (*model.Organization, error) {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Organizations)
+func (r *repository) GetOrganizationByTitle(ctx context.Context, title string) (*model.Organization, error) {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
 	var organization model.Organization
 	err := coll.FindOne(ctx, bson.M{"title": title}).Decode(&organization)
 	if err != nil {
@@ -174,15 +186,15 @@ func (r repository) GetOrganizationByTitle(ctx context.Context, title string) (*
 	return &organization, nil
 }
 
-func (r repository) UpdateOrganization(ctx context.Context, id primitive.ObjectID, organization model.Organization) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Organizations)
+func (r *repository) UpdateOrganization(ctx context.Context, id primitive.ObjectID, organization model.Organization) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
 	_, err := coll.ReplaceOne(ctx, bson.M{"_id": id}, organization)
 	return err
 }
 
-func (r repository) DeleteOrganization(ctx context.Context, id primitive.ObjectID) error {
-	coll := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Organizations)
-	usersColl := r.db.Client.Database(r.db.Database).Collection(r.db.Collections.Users)
+func (r *repository) DeleteOrganization(ctx context.Context, id primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+	usersColl := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 
 	_, err := usersColl.DeleteMany(ctx, bson.M{"organization_id": id})
 	if err != nil {
@@ -194,3 +206,137 @@ func (r repository) DeleteOrganization(ctx context.Context, id primitive.ObjectI
 }
 
 //endregion
+
+// region Chats
+
+func (r *repository) CreateChat(ctx context.Context, chat *model.Chat) error {
+	chat.ID = primitive.NewObjectID()
+	chat.CreatedAt = time.Now()
+	chat.UpdatedAt = time.Now()
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+	_, err := coll.InsertOne(ctx, chat)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *repository) GetChatByID(ctx context.Context, id primitive.ObjectID, userID primitive.ObjectID) (*model.Chat, error) {
+	var chat model.Chat
+
+	filter := bson.M{
+		"_id":    id,
+		"userId": userID,
+	}
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+	err := coll.FindOne(ctx, filter).Decode(&chat)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &chat, nil
+}
+
+func (r *repository) GetChatsByUserID(ctx context.Context, userID primitive.ObjectID) ([]*model.Chat, error) {
+	var chats []*model.Chat
+
+	filter := bson.M{"userId": userID}
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+	cursor, err := coll.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	if err = cursor.All(ctx, &chats); err != nil {
+		return nil, err
+	}
+
+	return chats, nil
+}
+
+func (r *repository) GetChatsByUserIDWithCursor(ctx context.Context, userID primitive.ObjectID, cursor string, limit int) ([]model.Chat, string, error) {
+	filter := bson.M{"user_id": userID}
+
+	if cursor != "" {
+		cursorObjectID, err := primitive.ObjectIDFromHex(cursor)
+		if err != nil {
+			return nil, "", err
+		}
+		filter["_id"] = bson.M{"$lt": cursorObjectID}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "_id", Value: -1}}).
+		SetLimit(int64(limit + 1))
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+
+	mongoCursor, err := coll.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, "", err
+	}
+	defer mongoCursor.Close(ctx)
+
+	var chats []model.Chat
+	if err := mongoCursor.All(ctx, &chats); err != nil {
+		return nil, "", err
+	}
+
+	var nextCursor string
+	if len(chats) > limit {
+		nextCursor = chats[limit].ID.Hex()
+		chats = chats[:limit]
+	}
+
+	return chats, nextCursor, nil
+}
+
+func (r *repository) DeleteChat(ctx context.Context, id primitive.ObjectID) error {
+	filter := bson.M{"_id": id}
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+	_, err := coll.DeleteOne(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *repository) AddChatMessages(ctx context.Context, chatID primitive.ObjectID, messages []model.Message) error {
+	filter := bson.M{"_id": chatID}
+	update := bson.M{
+		"$push": bson.M{
+			"messages": bson.M{"$each": messages},
+		},
+	}
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Chats)
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return fmt.Errorf("chat not found")
+	}
+
+	return nil
+}
+
+// endregion
+
+// region Status
+
+func (r *repository) HealthCheck(ctx context.Context) error {
+	return r.client.Client.Ping(ctx, readpref.Primary())
+}
+
+// endregion

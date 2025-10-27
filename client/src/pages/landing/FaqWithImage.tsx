@@ -31,7 +31,7 @@ export function FaqWithImage() {
             <Title
               order={2}
               ta="left"
-              className="pl-[var(--mantine-spacing-md)] text-[light-dark(var(--mantine-color-black),var(--mantine-color-white))] font-[Outfit,var(--mantine-font-family)] font-medium mb-4!"
+              className="pl-[var(--mantine-spacing-md)] text-[var(--mantine-color-white)] font-[Outfit,var(--mantine-font-family)] font-medium mb-4!"
             >
               Frequently Asked Questions
             </Title>

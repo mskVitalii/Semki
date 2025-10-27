@@ -10,14 +10,13 @@ export const useFetchUser = () => {
   const claims = useAuthStore((s) => s.claims)
   const setUser = useUserStore((s) => s.setUser)
   const setError = useUserStore((s) => s.setError)
-  console.log('useFetchUser')
+
   const query = useQuery<User | null, AxiosError>({
     queryKey: ['user'],
     queryFn: async () => {
       if (!claims || !claims._id) {
         return null
       }
-      console.log(claims._id)
       const { data } = await api.get(`/api/v1/user/${claims._id}`)
       return data
     },

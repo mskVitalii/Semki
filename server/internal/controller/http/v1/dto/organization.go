@@ -27,7 +27,7 @@ type CreateOrganizationRequest struct {
 
 func NewOrganizationFromRequest(req CreateOrganizationRequest) model.Organization {
 	return model.Organization{
-		Id:    primitive.NewObjectID(),
+		ID:    primitive.NewObjectID(),
 		Plan:  model.OrganizationPlans.FREE,
 		Title: req.Title,
 		Semantic: model.OrganizationSemantic{

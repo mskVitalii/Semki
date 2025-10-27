@@ -19,7 +19,7 @@ import React, { useCallback, useRef, useState } from 'react'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 
-const QA: React.FC = () => {
+const Chat: React.FC = () => {
   const [users, usersHandlers] = useListState<SearchResult>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>('')
@@ -41,6 +41,9 @@ const QA: React.FC = () => {
     usersHandlers.setState([])
     setError('')
   }, [usersHandlers])
+
+  // TODO: request to get chat
+  // TODO: button to retry if no answer in chat & no generation in progress
 
   const handleStream = useCallback(
     async (question: string) => {
@@ -128,6 +131,8 @@ const QA: React.FC = () => {
   }, [])
 
   const handleSubmit = (question: string): void => {
+    // TODO: create chat
+
     if (!isLoading && question.trim()) {
       handleStream(question.trim())
       console.log(question)
@@ -233,4 +238,4 @@ const QA: React.FC = () => {
   )
 }
 
-export default QA
+export default Chat
