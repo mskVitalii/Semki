@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	gojwt "github.com/golang-jwt/jwt/v5"
 	"github.com/redis/go-redis/v9"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"net/http"
@@ -97,11 +98,23 @@ type UserClaims struct {
 }
 
 func UserToPayload(data interface{}) (*UserClaims, error) {
+	// login flow: authenticator -> payloadFunc
 	user, ok := data.(*model.User)
 	if !ok {
-		return &UserClaims{}, errors.New("invalid user data")
+		// refresh flow: claims in Redis -> payloadFunc
+		b, err := bson.Marshal(data)
+		if err != nil {
+			telemetry.Log.Error("UserToPayload Error bson.Marshal")
+			return nil, err
+		}
+		var u model.User
+		if err := bson.Unmarshal(b, &u); err != nil {
+			telemetry.Log.Error("UserToPayload Error bson.Unmarshal")
+			return nil, err
+		}
+		user = &u
+		//return &UserClaims{}, errors.New("invalid user data")
 	}
-
 	return &UserClaims{
 		ID:               user.ID,
 		OrganizationId:   user.OrganizationID,

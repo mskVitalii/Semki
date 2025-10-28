@@ -160,7 +160,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 
 	// Creating user with organization
 	organization := dto.NewOrganizationFromRequest(dto.CreateOrganizationRequest{
-		Title: fmt.Sprintf("%s's organization", userDto.Email),
+		Title: fmt.Sprintf("%s's organization", userDto.Name),
 	})
 	err = s.repo.CreateOrganization(ctx, organization)
 	if err != nil {
@@ -220,9 +220,7 @@ func (s *userService) GetUser(c *gin.Context) {
 
 	userClaims, _ := c.Get(jwtUtils.IdentityKey)
 	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{
-			Message: "unauthorized",
-		})
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
 	userId := userClaims.(*jwtUtils.UserClaims).ID

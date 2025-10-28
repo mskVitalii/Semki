@@ -102,6 +102,7 @@ export function OrganizationSettings() {
             onChange={(e) => setTitle(e.currentTarget.value)}
             radius="md"
             size="md"
+            styles={{ label: { marginBottom: '0.75rem' } }}
           />
           <TextInput
             label="Current Plan"
@@ -109,6 +110,7 @@ export function OrganizationSettings() {
             disabled
             radius="md"
             size="md"
+            styles={{ label: { marginBottom: '0.75rem' } }}
           />
         </Stack>
 

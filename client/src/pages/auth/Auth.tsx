@@ -93,10 +93,8 @@ export function Auth(props: PaperProps) {
   const registerMutation = useMutation({
     mutationFn: register,
     onSuccess: (data) => {
-      console.log('registerMutation', data)
       setAuth(data.tokens.access_token, data.tokens.refresh_token)
-      // TODO: user
-      navigate('/chat', { replace: true })
+      navigate('/organization', { replace: true })
     },
     onError: (error: AxiosError<AuthErrorResponse>) => {
       console.error(error)

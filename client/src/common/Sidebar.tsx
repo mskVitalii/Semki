@@ -19,8 +19,6 @@ interface SidebarProps {
   onNewChat: () => void
 }
 
-// TODO: API chats history
-
 export function Sidebar({ onNewChat }: SidebarProps) {
   const navigate = useNavigate()
   const logout = useAuthStore((s) => s.logout)
@@ -57,7 +55,7 @@ export function Sidebar({ onNewChat }: SidebarProps) {
   const allChats = data?.pages.flatMap((page) => page.chats) ?? []
 
   return (
-    <Box className="relative h-screen w-80 flex flex-col border-r-2! border-[var(--mantine-color-dark-6)]!">
+    <Box className="relative h-screen flex flex-col border-r-2! border-[var(--mantine-color-dark-6)]!">
       <div className="flex flex-col h-full p-6! flex-1 space-y-6!">
         <Link to={`/profile/${claims?._id}`} className="no-underline mb-4">
           <UnstyledButton className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100">
@@ -75,8 +73,8 @@ export function Sidebar({ onNewChat }: SidebarProps) {
             <Avatar size="md" radius="xl">
               <IconSitemap size={20} />
             </Avatar>
-            <Text size="md" fw={500} className="capitalize" c="green">
-              {organizationDomain}
+            <Text size="md" fw={500} c="green">
+              {organizationDomain ?? 'Organization'}
             </Text>
           </UnstyledButton>
         </Link>

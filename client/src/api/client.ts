@@ -31,15 +31,24 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         useAuthStore.getState().logout()
-        window.location.href = '/login'
+        if (!window.location.href.endsWith('/login')) {
+          console.log('No refresh token, redirect to login')
+          window.location.href = '/login'
+        }
         return Promise.reject(error)
       }
 
       try {
-        const { data } = await api.post('/api/v1/refresh_token', {
-          refreshToken,
+        console.log('Try to refresh token')
+        const result = await api.post('/api/v1/refresh_token', {
+          refresh_token: refreshToken,
         })
 
+        if (result.status !== 200) {
+          throw new Error('Failed to refresh token')
+        }
+
+        const data = result.data
         useAuthStore.getState().setAuth(data.access_token, data.refresh_token)
         originalRequest.headers.Authorization = `Bearer ${data.access_token}`
 

@@ -6,7 +6,7 @@ import OrganizationUsers from './OrganizationUsers'
 function Organization() {
   return (
     <MainLayout>
-      <Paper p="xl" className="mt-10 w-full space-y-6!">
+      <Paper p="xl" className="mt-10 w-full space-y-6! overflow-auto">
         <OrganizationSettings />
         <OrganizationUsers />
       </Paper>

@@ -15,7 +15,9 @@ export const BootstrapRoute = ({
   if (orgQuery.isLoading || userQuery.isLoading)
     return (
       <MainLayout>
-        <Loader color="green" />
+        <div className="flex-1 flex items-center justify-center h-full">
+          <Loader color="green" />
+        </div>
       </MainLayout>
     )
 

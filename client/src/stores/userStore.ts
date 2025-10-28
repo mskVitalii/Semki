@@ -34,7 +34,7 @@ export const useUserStore = create<UserState>()(
       setError: (error) => set({ error, isLoading: false }),
     }),
     {
-      name: 'organization-storage',
+      name: 'user-storage',
     },
   ),
 )
