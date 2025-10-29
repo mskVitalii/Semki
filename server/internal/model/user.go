@@ -59,7 +59,7 @@ type UserContact struct {
 type User struct {
 	ID               primitive.ObjectID `json:"_id" bson:"_id"`
 	Email            string             `json:"email" bson:"email"`
-	Password         string             `json:"password" bson:"password"`
+	Password         string             `json:"-" bson:"password"`
 	Name             string             `json:"name" bson:"name"`
 	Providers        []UserProvider     `json:"providers" bson:"providers"`
 	Verified         bool               `json:"verified" bson:"verified"`

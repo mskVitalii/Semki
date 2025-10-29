@@ -93,6 +93,15 @@ definitions:
       title:
         type: string
     type: object
+  dto.GetOrganizationUsersResponse:
+    properties:
+      totalCount:
+        type: integer
+      users:
+        items:
+          $ref: '#/definitions/model.User'
+        type: array
+    type: object
   dto.GetUserHistoryResponse:
     properties:
       chats:
@@ -117,8 +126,6 @@ definitions:
       organizationId:
         type: string
       organizationRole:
-        type: string
-      password:
         type: string
       providers:
         items:
@@ -307,8 +314,6 @@ definitions:
       organizationId:
         type: string
       organizationRole:
-        type: string
-      password:
         type: string
       providers:
         items:
@@ -566,6 +571,49 @@ paths:
       security:
       - BearerAuth: []
       summary: Updates an organization by its ID
+      tags:
+      - organizations
+  /api/v1/organization/users:
+    get:
+      description: Retrieves users of the current user's organization with optional
+        search
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Number of users per page
+        in: query
+        name: limit
+        type: integer
+      - description: Search by name or email
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.GetOrganizationUsersResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "404":
+          description: Organization not found
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Retrieves paginated organization users
       tags:
       - organizations
   /api/v1/refresh_token:
@@ -915,7 +963,7 @@ paths:
       - BearerAuth: []
       summary: Create new chat
       tags:
-      - chat
+      - chats
   /chat/{id}:
     get:
       parameters:
@@ -959,7 +1007,7 @@ paths:
       - BearerAuth: []
       summary: Get chat by ID
       tags:
-      - chat
+      - chats
   /chat/history:
     get:
       parameters:
@@ -995,7 +1043,7 @@ paths:
       - BearerAuth: []
       summary: Get user chat history
       tags:
-      - chat
+      - chats
   /metrics:
     get:
       description: Logs that are collected by prometheus and visualized in grafana

@@ -13,11 +13,13 @@ type IOrganizationService interface {
 	GetOrganization(c *gin.Context)
 	UpdateOrganization(c *gin.Context)
 	DeleteOrganization(c *gin.Context)
+	GetOrganizationUsers(c *gin.Context)
 }
 
 func RegisterOrganizationRoutes(g *gin.RouterGroup, organizationService IOrganizationService, securityHandler gin.HandlerFunc) {
 	g.POST(organizationCRUD, organizationService.CreateOrganization)
 	g.GET(organizationCRUD, securityHandler, organizationService.GetOrganization)
-	g.PUT(organizationCRUD+"/:id", securityHandler, organizationService.UpdateOrganization)
-	g.DELETE(organizationCRUD+"/:id", securityHandler, organizationService.DeleteOrganization)
+	g.GET(organizationCRUD+"/users", securityHandler, organizationService.GetOrganizationUsers)
+	g.PUT(organizationCRUD, securityHandler, organizationService.UpdateOrganization)
+	g.DELETE(organizationCRUD, securityHandler, organizationService.DeleteOrganization)
 }

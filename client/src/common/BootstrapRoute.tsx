@@ -1,8 +1,8 @@
 import { Loader } from '@mantine/core'
 import { Outlet } from 'react-router-dom'
 import { MainLayout } from './SidebarLayout'
-import { useFetchOrganization } from './useFetchOrganization'
-import { useFetchUser } from './useFetchUser'
+import { useFetchOrganization } from './hooks/useFetchOrganization'
+import { useFetchUser } from './hooks/useFetchUser'
 
 export const BootstrapRoute = ({
   children,

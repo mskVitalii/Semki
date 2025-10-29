@@ -13,6 +13,7 @@ import (
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
 	"semki/pkg/telemetry"
+	"strconv"
 )
 
 // organizationService - dependent services
@@ -103,6 +104,60 @@ func (s *organizationService) GetOrganization(c *gin.Context) {
 	telemetry.Log.Info(fmt.Sprintf("GetOrganization -> organization title %s", organization.Title))
 
 	c.JSON(http.StatusOK, organization)
+}
+
+// GetOrganizationUsers godoc
+//
+//	@Summary		Retrieves paginated organization users
+//	@Description	Retrieves users of the current user's organization with optional search
+//	@Tags			organizations
+//	@Produce		json
+//	@Param			page	query	int		false	"Page number"				default(1)
+//	@Param			limit	query	int		false	"Number of users per page"	default(20)
+//	@Param			search	query	string	false	"Search by name or email"
+//	@Security		BearerAuth
+//	@Success		200	{object}	dto.GetOrganizationUsersResponse	"Successful response"
+//	@Failure		401	{object}	dto.UnauthorizedResponse			"Unauthorized"
+//	@Failure		404	{object}	lib.ErrorResponse					"Organization not found"
+//	@Failure		500	{object}	lib.ErrorResponse					"Internal server error"
+//	@Router			/api/v1/organization/users [get]
+func (s *organizationService) GetOrganizationUsers(c *gin.Context) {
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
+	if userClaims == nil {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
+		return
+	}
+	orgID := userClaims.(*jwtUtils.UserClaims).OrganizationId
+
+	pageStr := c.Query("page")
+	limitStr := c.Query("limit")
+	search := c.Query("search")
+
+	page := 1
+	limit := 20
+
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+			page = p
+		}
+	}
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	ctx := c.Request.Context()
+	users, totalCount, err := s.repo.GetUsersByOrganization(ctx, orgID, search, page, limit)
+	if err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to get organization users")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.GetOrganizationUsersResponse{
+		Users:      users,
+		TotalCount: totalCount,
+	})
 }
 
 // UpdateOrganization godoc

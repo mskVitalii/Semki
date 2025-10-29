@@ -21,6 +21,7 @@ type IRepository interface {
 	GetUserByID(ctx context.Context, id primitive.ObjectID) (*model.User, error)
 	GetUsersByIDs(ctx context.Context, ids []primitive.ObjectID) ([]*model.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+	GetUsersByOrganization(ctx context.Context, orgID primitive.ObjectID, search string, page, limit int) ([]*model.User, int64, error)
 	UpdateUser(ctx context.Context, id primitive.ObjectID, user model.User) error
 	DeleteUser(ctx context.Context, id primitive.ObjectID) error
 	RestoreUser(ctx context.Context, id primitive.ObjectID) error
@@ -148,6 +149,40 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (*model.U
 		return nil, err
 	}
 	return decryptedUser, nil
+}
+
+func (r *repository) GetUsersByOrganization(ctx context.Context, orgID primitive.ObjectID, search string, page, limit int) ([]*model.User, int64, error) {
+	filter := bson.M{"organizationId": orgID}
+	if search != "" {
+		filter["$or"] = []bson.M{
+			{"name": bson.M{"$regex": search, "$options": "i"}},
+			{"email": bson.M{"$regex": search, "$options": "i"}},
+		}
+	}
+
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
+	totalCount, err := coll.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	findOptions := options.Find().
+		SetSkip(int64((page - 1) * limit)).
+		SetLimit(int64(limit)).
+		SetSort(bson.M{"name": 1})
+
+	cursor, err := coll.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []*model.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, 0, err
+	}
+
+	return users, totalCount, nil
 }
 
 //endregion

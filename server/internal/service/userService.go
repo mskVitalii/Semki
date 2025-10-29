@@ -170,6 +170,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 
 	user := dto.NewUserFromRequest(userDto.CreateUserRequest)
 	user.OrganizationID = organization.ID
+	user.OrganizationRole = model.OrganizationRoles.OWNER
 
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")

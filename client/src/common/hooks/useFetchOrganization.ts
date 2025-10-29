@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { useEffect } from 'react'
-import { type Organization } from './types'
+import { type Organization } from '../types'
 
 export const useFetchOrganization = () => {
   const setOrganization = useOrganizationStore((s) => s.setOrganization)

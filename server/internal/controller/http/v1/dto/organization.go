@@ -19,6 +19,11 @@ type CreateOrganizationResponse struct {
 
 type GetOrganizationResponse model.Organization
 
+type GetOrganizationUsersResponse struct {
+	Users      []*model.User `json:"users"`
+	TotalCount int64         `json:"totalCount"`
+}
+
 type CreateOrganizationRequest struct {
 	Title string `json:"title" example:"Staffbase"`
 }

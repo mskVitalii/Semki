@@ -68,7 +68,7 @@ export default function Profile() {
     setEditing(false)
     // TODO: change to tanstack
     if (!userId) return
-    await fetch(`${import.meta.env.VITE_API_URL}/api/users/${userId}`, {
+    await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/${userId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

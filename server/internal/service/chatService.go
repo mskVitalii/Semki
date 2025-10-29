@@ -27,7 +27,7 @@ func NewChatService(repo mongo.IRepository) routes.IChatService {
 // CreateChat
 //
 //	@Summary	Create new chat
-//	@Tags		chat
+//	@Tags		chats
 //	@Accept		json
 //	@Produce	json
 //	@Param		request	body		dto.CreateChatRequest	true	"Chat creation request"
@@ -82,7 +82,7 @@ func (s *chatService) CreateChat(c *gin.Context) {
 // GetChat
 //
 //	@Summary	Get chat by ID
-//	@Tags		chat
+//	@Tags		chats
 //	@Produce	json
 //	@Param		id	path		string	true	"Chat ID"
 //	@Success	200	{object}	dto.GetChatResponse
@@ -141,7 +141,7 @@ func (s *chatService) GetChat(c *gin.Context) {
 // GetUserHistory
 //
 //	@Summary	Get user chat history
-//	@Tags		chat
+//	@Tags		chats
 //	@Produce	json
 //	@Param		cursor	query		string	false	"Cursor for pagination"
 //	@Param		limit	query		int		false	"Number of items per page"	default(20)

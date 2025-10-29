@@ -93,21 +93,24 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 
 	if userFromDb == nil {
 		userFromDb = dto.NewUserFromGoogleProvider(user)
+		if userFromDb.OrganizationRole == "" {
+			// Invited users has its Role. Probably fix it later
+			userFromDb.OrganizationRole = model.OrganizationRoles.OWNER
+		}
 		if err := s.repo.CreateUser(ctx, userFromDb); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
 	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDb.Providers) == false {
+		if userFromDb.Status == model.UserStatuses.DELETED {
+			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=user%20deleted")
+			return
+		}
 		userFromDb.Providers = append(userFromDb.Providers, model.UserProviders.Google)
 		if err := s.repo.UpdateUser(ctx, userFromDb.ID, *userFromDb); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20update%20provider")
 			return
 		}
-	}
-
-	if userFromDb.Status == model.UserStatuses.DELETED {
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=user%20deleted")
-		return
 	}
 
 	// Token

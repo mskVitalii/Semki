@@ -4,7 +4,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useQuery } from '@tanstack/react-query'
 import { AxiosError } from 'axios'
 import { useEffect } from 'react'
-import { type User } from './types'
+import { type User } from '../types'
 
 export const useFetchUser = () => {
   const claims = useAuthStore((s) => s.claims)

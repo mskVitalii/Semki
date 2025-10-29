@@ -1,10 +1,5 @@
-import {
-  mockUser,
-  OrganizationRoles,
-  type Level,
-  type Organization,
-  type Team,
-} from '@/common/types'
+import { type Level, type Organization, type Team } from '@/common/types'
+import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Button,
@@ -21,16 +16,19 @@ import {
   Title,
 } from '@mantine/core'
 import { useDisclosure, useListState } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
 import { useState } from 'react'
 import { v4 as uuid } from 'uuid'
 
 export function OrganizationSettings() {
   const remoteOrg = useOrganizationStore((s) => s.organization)
   const setRemoteOrg = useOrganizationStore((s) => s.setOrganization)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
 
   const [organization, setOrganization] = useState<Organization | null>(
     remoteOrg,
   )
+
   // TODO: change on Form
   const [title, setTitle] = useState(remoteOrg?.title ?? '')
   const [levels, levelsHandlers] = useListState<Level>(
@@ -64,12 +62,8 @@ export function OrganizationSettings() {
     })
   }
 
-  const canEdit =
-    mockUser.organizationRole === OrganizationRoles.OWNER ||
-    mockUser.organizationRole === OrganizationRoles.ADMIN
-
   const handleSave = () => {
-    // TODO: API
+    // TODO: patch API
     if (!organization) return
     const newOrg: Organization = {
       ...organization,
@@ -83,7 +77,7 @@ export function OrganizationSettings() {
     }
     setOrganization(newOrg)
     setRemoteOrg(newOrg)
-    // TODO: save notification
+    notifications.show({ title: 'Success', message: 'Saved', color: 'green' })
   }
 
   if (!organization) return <div>Loading...</div>
@@ -99,6 +93,7 @@ export function OrganizationSettings() {
           <TextInput
             label="Organization Title"
             value={title}
+            disabled={!isAdmin}
             onChange={(e) => setTitle(e.currentTarget.value)}
             radius="md"
             size="md"
@@ -134,6 +129,7 @@ export function OrganizationSettings() {
                     <TextInput
                       label="Level Name"
                       value={level.name}
+                      disabled={!isAdmin}
                       onChange={(e) =>
                         levelsHandlers.setItem(idx, {
                           ...level,
@@ -145,6 +141,7 @@ export function OrganizationSettings() {
                       label="Level Description"
                       minRows={2}
                       value={level.description}
+                      disabled={!isAdmin}
                       onChange={(e) =>
                         levelsHandlers.setItem(idx, {
                           ...level,
@@ -155,7 +152,7 @@ export function OrganizationSettings() {
                   </Stack>
                 </Card>
               ))}
-              {canEdit && (
+              {isAdmin && (
                 <Button size="sm" variant="outline" onClick={addLevel}>
                   Add Level
                 </Button>
@@ -180,6 +177,7 @@ export function OrganizationSettings() {
             <TagsInput
               label="Locations"
               value={locations}
+              disabled={!isAdmin}
               onChange={locationsHandlers.setState}
               placeholder="Add location..."
               radius="md"
@@ -209,6 +207,7 @@ export function OrganizationSettings() {
                     <TextInput
                       label="Team Name"
                       value={team.name}
+                      disabled={!isAdmin}
                       onChange={(e) =>
                         teamsHandlers.setItem(idx, {
                           ...team,
@@ -220,6 +219,7 @@ export function OrganizationSettings() {
                       label="Team Description"
                       minRows={2}
                       value={team.description}
+                      disabled={!isAdmin}
                       onChange={(e) =>
                         teamsHandlers.setItem(idx, {
                           ...team,
@@ -230,7 +230,7 @@ export function OrganizationSettings() {
                   </Stack>
                 </Card>
               ))}
-              {canEdit && (
+              {isAdmin && (
                 <Button size="sm" variant="outline" onClick={addTeam}>
                   Add Team
                 </Button>
@@ -241,7 +241,7 @@ export function OrganizationSettings() {
 
         <Divider my="lg" />
 
-        {canEdit && (
+        {isAdmin && (
           <Group className="justify-end pt-6">
             <Button size="md" radius="md" bg="green" onClick={handleSave}>
               Save Changes

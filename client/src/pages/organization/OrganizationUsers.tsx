@@ -1,4 +1,7 @@
-import { mockUser, type User, UserStatuses } from '@/common/types'
+import { fetchOrganizationUsers } from '@/api/organization'
+import { inviteUser, updateUserStatus, type InviteUserData } from '@/api/user'
+import { UserStatuses, type UserStatus } from '@/common/types'
+import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Badge,
@@ -14,39 +17,84 @@ import {
   TextInput,
   Title,
 } from '@mantine/core'
-import { useDisclosure, useListState } from '@mantine/hooks'
-import { useMemo, useState } from 'react'
-import { v4 as uuid } from 'uuid'
-import OrganizationNewUserForm from './OrganizationNewUserForm'
+import { useDebouncedValue, useDisclosure } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import OrganizationInviteUserForm from './OrganizationInviteUserForm'
 
 const PAGE_SIZE = 5
 
 export function OrganizationUsers() {
   const organization = useOrganizationStore((s) => s.organization)
-
-  const [users, usersHandlers] = useListState<User>([mockUser])
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+  const queryClient = useQueryClient()
   const [formOpened, { toggle: toggleForm }] = useDisclosure(false)
   const [search, setSearch] = useState('')
-  const [activePage, setActivePage] = useState(1)
+  const [debouncedSearch] = useDebouncedValue(search, 500)
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()),
-    )
-  }, [users, search])
+  const [page, setPage] = useState(1)
+  const { data, isError, isLoading } = useQuery({
+    queryKey: ['organizationUsers', page, debouncedSearch],
+    queryFn: () => fetchOrganizationUsers(page, PAGE_SIZE, debouncedSearch),
+  })
 
-  const pageCount = Math.ceil(filteredUsers.length / PAGE_SIZE)
-  const paginatedUsers = useMemo(() => {
-    const start = (activePage - 1) * PAGE_SIZE
-    return filteredUsers.slice(start, start + PAGE_SIZE)
-  }, [filteredUsers, activePage])
+  const pageCount = Math.ceil((data?.totalCount ?? 0) / PAGE_SIZE)
+  const users = data?.users ?? []
 
-  const handleAddUser = (newUser: User) => {
+  const inviteUserMutation = useMutation({
+    mutationFn: inviteUser,
+    onError: (error) => {
+      console.error('Error inviting user:', error)
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to invite user. Please try again.',
+        color: 'red',
+      })
+    },
+    onSuccess: () => {
+      notifications.show({
+        title: 'Success',
+        message: 'User invited successfully',
+        color: 'green',
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['organizationUsers', debouncedSearch],
+      })
+    },
+  })
+
+  const updateUserStatusMutation = useMutation({
+    mutationFn: ({ userId, status }: { userId: string; status: UserStatus }) =>
+      updateUserStatus(userId, status),
+    onError: (error) => {
+      console.error('Error updating user status:', error)
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update user status. Please try again.',
+        color: 'red',
+      })
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ['organizationUsers', debouncedSearch],
+      }),
+  })
+
+  const handleAddUser = (newUser: InviteUserData) => {
     if (!newUser.email || !newUser.name) return
-    usersHandlers.append({ ...newUser, _id: uuid() })
+    inviteUserMutation.mutate(newUser, {
+      onSuccess: () =>
+        queryClient.invalidateQueries({
+          queryKey: ['organizationUsers', search],
+        }),
+    })
   }
+
+  const handleChangeStatus = (userId: string, status: UserStatus) => {
+    updateUserStatusMutation.mutate({ userId, status })
+  }
+
   return (
     <Container className="py-12">
       <Paper className="p-8 max-w-5xl mx-auto space-y-8 backdrop-blur-sm">
@@ -56,21 +104,23 @@ export function OrganizationUsers() {
 
         <Divider my="lg" />
 
-        <Stack gap="md">
-          <Group
-            className="justify-between items-center cursor-pointer select-none"
-            onClick={toggleForm}
-          >
-            <Title order={4}>Invite User</Title>
-            <Button variant="light" size="xs">
-              {formOpened ? 'Hide' : 'Show'}
-            </Button>
-          </Group>
+        {isAdmin && (
+          <Stack gap="md">
+            <Group
+              className="justify-between items-center cursor-pointer select-none"
+              onClick={toggleForm}
+            >
+              <Title order={4}>Invite User</Title>
+              <Button variant="light" size="xs">
+                {formOpened ? 'Hide' : 'Show'}
+              </Button>
+            </Group>
 
-          <Collapse in={formOpened}>
-            <OrganizationNewUserForm onSave={handleAddUser} />
-          </Collapse>
-        </Stack>
+            <Collapse in={formOpened}>
+              <OrganizationInviteUserForm onSave={handleAddUser} />
+            </Collapse>
+          </Stack>
+        )}
 
         <Divider my="lg" label="Current Users" labelPosition="center" />
 
@@ -99,7 +149,25 @@ export function OrganizationUsers() {
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
-                {paginatedUsers.length === 0 ? (
+                {isLoading ? (
+                  <Table.Tr>
+                    <Table.Td
+                      colSpan={9}
+                      className="text-center py-6 text-gray-500"
+                    >
+                      Loading users...
+                    </Table.Td>
+                  </Table.Tr>
+                ) : isError ? (
+                  <Table.Tr>
+                    <Table.Td
+                      colSpan={9}
+                      className="text-center py-6 text-red-500"
+                    >
+                      Failed to load users
+                    </Table.Td>
+                  </Table.Tr>
+                ) : users.length === 0 ? (
                   <Table.Tr>
                     <Table.Td
                       colSpan={9}
@@ -109,7 +177,7 @@ export function OrganizationUsers() {
                     </Table.Td>
                   </Table.Tr>
                 ) : (
-                  paginatedUsers.map((user, idx) => {
+                  users.map((user) => {
                     const statusColor =
                       user.status === UserStatuses.ACTIVE
                         ? 'green'
@@ -153,10 +221,10 @@ export function OrganizationUsers() {
                                 color="red"
                                 variant="light"
                                 onClick={() =>
-                                  usersHandlers.setItem(idx, {
-                                    ...user,
-                                    status: UserStatuses.DELETED,
-                                  })
+                                  handleChangeStatus(
+                                    user._id,
+                                    UserStatuses.DELETED,
+                                  )
                                 }
                               >
                                 Delete
@@ -168,10 +236,10 @@ export function OrganizationUsers() {
                               color="green"
                               variant="light"
                               onClick={() =>
-                                usersHandlers.setItem(idx, {
-                                  ...user,
-                                  status: UserStatuses.ACTIVE,
-                                })
+                                handleChangeStatus(
+                                  user._id,
+                                  UserStatuses.ACTIVE,
+                                )
                               }
                             >
                               Restore
@@ -189,8 +257,8 @@ export function OrganizationUsers() {
           {pageCount > 1 && (
             <Group justify="flex-end" mt="md">
               <Pagination
-                value={activePage}
-                onChange={setActivePage}
+                value={page}
+                onChange={setPage}
                 total={pageCount}
                 size="sm"
               />

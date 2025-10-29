@@ -297,6 +297,71 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/organization/users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves users of the current user's organization with optional search",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Retrieves paginated organization users",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of users per page",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by name or email",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "schema": {
+                            "$ref": "#/definitions/dto.GetOrganizationUsersResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UnauthorizedResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Organization not found",
+                        "schema": {
+                            "$ref": "#/definitions/lib.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/lib.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/organization/{id}": {
             "put": {
                 "security": [
@@ -843,7 +908,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "chats"
                 ],
                 "summary": "Create new chat",
                 "parameters": [
@@ -905,7 +970,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "chats"
                 ],
                 "summary": "Get user chat history",
                 "parameters": [
@@ -962,7 +1027,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "chats"
                 ],
                 "summary": "Get chat by ID",
                 "parameters": [
@@ -1179,6 +1244,20 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.GetOrganizationUsersResponse": {
+            "type": "object",
+            "properties": {
+                "totalCount": {
+                    "type": "integer"
+                },
+                "users": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.User"
+                    }
+                }
+            }
+        },
         "dto.GetUserHistoryResponse": {
             "type": "object",
             "properties": {
@@ -1215,9 +1294,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "organizationRole": {
-                    "type": "string"
-                },
-                "password": {
                     "type": "string"
                 },
                 "providers": {
@@ -1506,9 +1582,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "organizationRole": {
-                    "type": "string"
-                },
-                "password": {
                     "type": "string"
                 },
                 "providers": {
