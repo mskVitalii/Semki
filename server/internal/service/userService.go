@@ -23,12 +23,12 @@ import (
 // userService - dependent services
 type userService struct {
 	repo         mongo.IRepository
-	emailService EmailService
+	emailService *EmailService
 	jwtAuth      *ginJwt.GinJWTMiddleware
 	cfg          *config.Config
 }
 
-func NewUserService(repo mongo.IRepository, emailService EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
+func NewUserService(repo mongo.IRepository, emailService *EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
 	return &userService{repo, emailService, jwtAuth, cfg}
 }
 
@@ -150,8 +150,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 			return
 		}
 
-		claims, err := jwtUtils.UserToPayload(userByEmail)
-		jwtToken, err := s.jwtAuth.TokenGenerator(claims)
+		jwtToken, err := s.jwtAuth.TokenGenerator(userByEmail)
 		if err != nil {
 			telemetry.Log.Error(err.Error())
 			c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?error=internal%20error%20token")
@@ -182,16 +181,26 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	}
 
 	// Verification email
-	// TODO: verification link + handler
-	err = s.emailService.SendVerificationEmail(user.Email, user.Name, "")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, InviteClaims{
+		UserID:         user.ID,
+		OrganizationID: user.OrganizationID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	tokenString, _ := token.SignedString([]byte(s.cfg.SecretKeyJWT + "verify_user"))
+
+	verificationLink := fmt.Sprintf("%s/api/v1/user/%s/verify/accept?token=%s", s.cfg.Protocol+"://"+s.cfg.Host+":"+s.cfg.Port, user.ID.Hex(), tokenString)
+
+	err = s.emailService.SendVerificationEmail(user.Email, user.Name, verificationLink)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 		return
 	}
 
 	// Token
-	claims, err := jwtUtils.UserToPayload(user)
-	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
+	jwtToken, err := s.jwtAuth.TokenGenerator(user)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
 		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?error=internal%20error%20token")
@@ -200,8 +209,54 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, dto.RegisterUserResponse{Message: "User created", Tokens: *jwtToken})
 }
 
-func (s *userService) VerifyUserEmailHandler(_ *gin.Context) {
-	// TODO:
+type VerifyClaims struct {
+	UserID         primitive.ObjectID `json:"userId"`
+	OrganizationID primitive.ObjectID `json:"organizationId"`
+	jwt.RegisteredClaims
+}
+
+func (s *userService) VerifyUserEmailHandler(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, lib.ErrorResponse{Message: "Missing token"})
+		return
+	}
+
+	claims := &VerifyClaims{}
+	parsedToken, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(s.cfg.SecretKeyJWT + "verify_user"), nil
+	})
+	if err != nil || !parsedToken.Valid {
+		c.JSON(http.StatusUnauthorized, lib.ErrorResponse{Message: "Invalid or expired token"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := s.repo.GetUserByID(ctx, claims.UserID)
+	if err != nil || user == nil {
+		c.JSON(http.StatusNotFound, lib.ErrorResponse{Message: "User not found"})
+		return
+	}
+
+	if user.Status == model.UserStatuses.INVITED {
+		user.Status = model.UserStatuses.ACTIVE
+		user.Verified = true
+		err = s.repo.UpdateUser(ctx, user.ID, *user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
+			return
+		}
+	}
+
+	// Token
+	jwtToken, err := s.jwtAuth.TokenGenerator(user)
+	if err != nil {
+		telemetry.Log.Error(err.Error())
+		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?error=internal%20error%20token")
+		return
+	}
+
+	c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?accessToken="+jwtToken.AccessToken+"&refreshToken="+jwtToken.RefreshToken)
 }
 
 // GetUser godoc
@@ -221,7 +276,7 @@ func (s *userService) GetUser(c *gin.Context) {
 	telemetry.Log.Info("GetUser")
 
 	id := c.Param("id")
-	paramObjectId, err := mongoUtils.StringToObjectID(id)
+	paramObjectID, err := mongoUtils.StringToObjectID(id)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
 		return
@@ -232,15 +287,15 @@ func (s *userService) GetUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	userId := userClaims.(*jwtUtils.UserClaims).ID
-	if userId != paramObjectId {
+	userID := userClaims.(*jwtUtils.UserClaims).ID
+	if userID != paramObjectID {
 		c.JSON(http.StatusForbidden, dto.UnauthorizedResponse{Message: "Forbidden"})
 		return
 	}
-	telemetry.Log.Info(fmt.Sprintf("GetUser -> userId%s", userId))
+	telemetry.Log.Info(fmt.Sprintf("GetUser -> userID%s", userID))
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByID(ctx, paramObjectId)
+	user, err := s.repo.GetUserByID(ctx, paramObjectID)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get user")
 		return
@@ -480,13 +535,13 @@ func (s *userService) InviteUser(c *gin.Context) {
 		UserID:         user.ID,
 		OrganizationID: claims.OrganizationId,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	})
-	tokenString, _ := token.SignedString([]byte(s.cfg.SecretKeyJWT))
+	tokenString, _ := token.SignedString([]byte(s.cfg.SecretKeyJWT + "invite-user"))
 
-	invitationLink := fmt.Sprintf("%s/api/v1/user/%s/invite/accept?token=%s", user.ID, s.cfg.Host+":"+s.cfg.Port, tokenString)
+	invitationLink := fmt.Sprintf("%s/api/v1/user/%s/invite/accept?token=%s", s.cfg.Protocol+"://"+s.cfg.Host+":"+s.cfg.Port, user.ID.Hex(), tokenString)
 
 	err = s.emailService.SendInvitationEmail(user.Email, user.Name, organization.Title, invitationLink)
 	if err != nil {
@@ -514,7 +569,7 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 
 	claims := &InviteClaims{}
 	parsedToken, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
-		return []byte(s.cfg.SecretKeyJWT), nil
+		return []byte(s.cfg.SecretKeyJWT + "invite-user"), nil
 	})
 	if err != nil || !parsedToken.Valid {
 		c.JSON(http.StatusUnauthorized, lib.ErrorResponse{Message: "Invalid or expired token"})
@@ -535,6 +590,7 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 
 	if user.Status == model.UserStatuses.INVITED {
 		user.Status = model.UserStatuses.ACTIVE
+		user.Verified = true
 		err = s.repo.UpdateUser(ctx, user.ID, *user)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
@@ -543,13 +599,187 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 	}
 
 	// Token
-	authClaims, err := jwtUtils.UserToPayload(user)
-	jwtToken, err := s.jwtAuth.TokenGenerator(authClaims)
+	jwtToken, err := s.jwtAuth.TokenGenerator(user)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
 		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?error=internal%20error%20token")
 		return
 	}
 
-	c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?accessToken="+jwtToken.AccessToken+"&refresh="+jwtToken.RefreshToken)
+	c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?accessToken="+jwtToken.AccessToken+"&refreshToken="+jwtToken.RefreshToken)
+}
+
+// SetPassword godoc
+//
+//	@Summary		Sets password for invited user
+//	@Description	Accepts invitation token and sets user password
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			data	body		dto.SetPasswordRequest		true	"Token and new password"
+//	@Success		200		{object}	dto.SuccessResponse			"Password set successfully"
+//	@Failure		400		{object}	lib.ErrorResponse			"Bad request"
+//	@Failure		401		{object}	dto.UnauthorizedResponse	"Unauthorized"
+//	@Failure		500		{object}	lib.ErrorResponse			"Internal server error"
+//	@Router			/api/v1/user/set_password [post]
+func (s *userService) SetPassword(c *gin.Context) {
+	var req dto.SetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		lib.ResponseBadRequest(c, err, "Failed to bind body")
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
+	if userClaims == nil {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Unauthorized"})
+		return
+	}
+	claims, ok := userClaims.(*jwtUtils.UserClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
+		return
+	}
+	userID := claims.ID
+
+	if lib.IsValidPassword(req.Password) == false {
+		lib.ResponseBadRequest(c, errors.New("Invalid password"), "Password must meet requirements")
+		return
+	}
+
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		lib.ResponseBadRequest(c, errors.New("User not found"), "Use correct invitation link")
+		return
+	}
+
+	if user.Password != "" {
+		lib.ResponseBadRequest(c, errors.New("User already active"), "Password already set")
+		return
+	}
+
+	user.Password = lib.HashPassword(req.Password)
+	user.Status = model.UserStatuses.ACTIVE
+
+	if err := s.repo.UpdateUser(ctx, userID, *user); err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to update user")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{Message: "Password set successfully"})
+}
+
+type ResetPasswordClaims struct {
+	UserID         primitive.ObjectID `json:"userId"`
+	OrganizationID primitive.ObjectID `json:"organizationId"`
+	jwt.RegisteredClaims
+}
+
+// ResetPassword godoc
+//
+//	@Summary		Request password reset
+//	@Description	Sends a password reset email with a secure link to the user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			data	body		dto.ResetPasswordRequest	true	"Email for password reset"
+//	@Success		200		{object}	dto.SuccessResponse			"If the email exists, reset instructions have been sent"
+//	@Failure		400		{object}	lib.ErrorResponse			"Bad request"
+//	@Failure		500		{object}	lib.ErrorResponse			"Internal server error"
+//	@Router			/api/v1/user/reset_password [post]
+func (s *userService) ResetPassword(c *gin.Context) {
+	var req dto.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		lib.ResponseBadRequest(c, err, "Invalid request body")
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	if err != nil || user == nil {
+		c.JSON(http.StatusOK, dto.SuccessResponse{Message: "If the email exists, reset instructions have been sent"})
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, ResetPasswordClaims{
+		UserID:         user.ID,
+		OrganizationID: user.OrganizationID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(1 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	tokenString, err := token.SignedString([]byte(s.cfg.SecretKeyJWT + "reset_password"))
+	if err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to generate reset token")
+		return
+	}
+
+	resetLink := fmt.Sprintf("%s/api/v1/user/reset_password/confirm?token=%s", s.cfg.Protocol+"://"+s.cfg.Host+":"+s.cfg.Port, tokenString)
+	if err := s.emailService.SendPasswordResetEmail(user.Email, user.Name, resetLink); err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to send reset email")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.SuccessResponse{Message: "If the email exists, reset instructions have been sent"})
+}
+
+// ConfirmResetPasswordHandler godoc
+//
+//	@Summary		Confirm password reset
+//	@Description	Accepts new password from user using a valid reset token. Redirects user to onboarding with JWT.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			token	query		string							true	"Password reset token from email link"
+//	@Param			data	body		dto.ConfirmResetPasswordRequest	true	"New password"
+//	@Success		302		{string}	string							"Redirects to /onboarding with accessToken and refreshToken"
+//	@Failure		400		{object}	lib.ErrorResponse				"Bad request / invalid token / missing password"
+//	@Failure		401		{object}	dto.UnauthorizedResponse		"Unauthorized / expired token"
+//	@Failure		500		{object}	lib.ErrorResponse				"Internal server error"
+//	@Router			/api/v1/user/reset_password/confirm [get]
+func (s *userService) ConfirmResetPasswordHandler(c *gin.Context) {
+	telemetry.Log.Info("ConfirmResetPasswordHandler")
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		lib.ResponseBadRequest(c, errors.New("missing token"), "Missing token")
+		return
+	}
+
+	token, err := jwt.ParseWithClaims(tokenStr, &ResetPasswordClaims{}, func(t *jwt.Token) (interface{}, error) {
+		return []byte(s.cfg.SecretKeyJWT + "reset_password"), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid or expired token"})
+		return
+	}
+
+	claims := token.Claims.(*ResetPasswordClaims)
+	userID := claims.UserID
+
+	ctx := c.Request.Context()
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil || user == nil {
+		lib.ResponseBadRequest(c, errors.New("user not found"), "User does not exist")
+		return
+	}
+
+	user.Password = ""
+	user.Status = model.UserStatuses.ACTIVE
+	user.Verified = true
+
+	if err := s.repo.UpdateUser(ctx, user.ID, *user); err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to update user password")
+		return
+	}
+
+	jwtToken, err := s.jwtAuth.TokenGenerator(user)
+	if err != nil {
+		telemetry.Log.Error(err.Error())
+		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?error=internal%20error%20token")
+		return
+	}
+
+	c.Redirect(http.StatusFound, fmt.Sprintf("%s/onboarding?accessToken=%s&refreshToken=%s", s.cfg.FrontendUrl, jwtToken.AccessToken, jwtToken.RefreshToken))
 }

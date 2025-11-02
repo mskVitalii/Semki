@@ -121,7 +121,7 @@ func (r *repository) GetUserByID(ctx context.Context, id primitive.ObjectID) (*m
 func (r *repository) UpdateUser(ctx context.Context, id primitive.ObjectID, user model.User) error {
 	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Users)
 	encryptedUser, err := crypto.EncryptUserFields(user, r.config.CryptoKey)
-	_, err = coll.ReplaceOne(ctx, bson.M{"_id": id}, bson.M{"$set": encryptedUser})
+	_, err = coll.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": encryptedUser})
 	return err
 }
 

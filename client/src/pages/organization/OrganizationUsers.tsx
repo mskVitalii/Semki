@@ -34,7 +34,7 @@ export function OrganizationUsers() {
   const organization = useOrganizationStore((s) => s.organization)
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const queryClient = useQueryClient()
-  const [formOpened, { toggle: toggleForm }] = useDisclosure(false)
+  const [formOpened, { toggle: toggleForm }] = useDisclosure(true)
   const [search, setSearch] = useState('')
   const [debouncedSearch] = useDebouncedValue(search, 500)
 
@@ -64,7 +64,7 @@ export function OrganizationUsers() {
         color: 'green',
       })
       queryClient.invalidateQueries({
-        queryKey: ['organizationUsers', debouncedSearch],
+        queryKey: ['organizationUsers', page, debouncedSearch],
       })
     },
   })
@@ -81,7 +81,7 @@ export function OrganizationUsers() {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ['organizationUsers', debouncedSearch],
+        queryKey: ['organizationUsers', page, debouncedSearch],
       }),
   })
 
@@ -97,7 +97,7 @@ export function OrganizationUsers() {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({
-        queryKey: ['organizationUsers', debouncedSearch],
+        queryKey: ['organizationUsers', page, debouncedSearch],
       }),
   })
 
@@ -106,7 +106,7 @@ export function OrganizationUsers() {
     inviteUserMutation.mutate(newUser, {
       onSuccess: () =>
         queryClient.invalidateQueries({
-          queryKey: ['organizationUsers', search],
+          queryKey: ['organizationUsers', page, debouncedSearch],
         }),
     })
   }
