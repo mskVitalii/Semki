@@ -3,16 +3,15 @@ package routes
 import (
 	jwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
-	"net/http"
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/model"
+	"semki/pkg/lib"
 )
 
 const (
 	login          = "/login"
 	logout         = "/logout"
 	refreshToken   = "/refresh_token"
-	resetPassword  = "/reset_password"
 	googleLogin    = "/google/login"
 	GoogleCallback = "/google/callback"
 	claims         = "/claims"
@@ -23,7 +22,6 @@ type IAuthService interface {
 	LogoutHandler(c *gin.Context)
 	RefreshTokenHandler(c *gin.Context)
 	ClaimsHandler(c *gin.Context)
-	ResetPassword(c *gin.Context)
 	Authenticate(request dto.LoginRequest) (*model.User, error)
 }
 
@@ -43,13 +41,7 @@ func RegisterAuthRoutes(g *gin.RouterGroup,
 	g.POST(logout, withAuth, logoutHandler)
 	g.POST(refreshToken, authMiddleware.RefreshHandler)
 	g.GET(googleLogin, googleService.GoogleLoginHandler)
-	g.OPTIONS(googleLogin, func(c *gin.Context) {
-		c.Header("Access-Control-Allow-Origin", "*")
-		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		c.Status(http.StatusOK)
-	})
+	g.OPTIONS(googleLogin, lib.Preflight)
 	g.GET(GoogleCallback, googleService.GoogleAuthCallback)
 	g.GET(claims, withAuth, authService.ClaimsHandler)
-	g.POST(resetPassword, authService.ResetPassword)
 }

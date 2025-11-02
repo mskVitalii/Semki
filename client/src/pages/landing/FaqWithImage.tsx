@@ -38,14 +38,14 @@ export function FaqWithImage() {
 
             <Accordion
               chevronPosition="right"
-              defaultValue="reset-password"
+              defaultValue="reset_password"
               variant="separated"
             >
               {FAQ.map(({ question, answer }) => (
                 <Accordion.Item
                   key={question}
                   className="text-[var(--mantine-font-size-sm)]"
-                  value="reset-password"
+                  value="reset_password"
                 >
                   <Accordion.Control>{question}</Accordion.Control>
                   <Accordion.Panel>{answer}</Accordion.Panel>

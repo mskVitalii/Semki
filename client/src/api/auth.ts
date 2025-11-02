@@ -47,3 +47,19 @@ export const register = async (
   const response = await api.post('/api/v1/user/register', data)
   return response.data
 }
+
+export interface SetPasswordDto {
+  password: string
+}
+
+export const setPassword = async (
+  data: SetPasswordDto,
+): Promise<RegisterUserResponse> => {
+  const response = await api.post('/api/v1/user/set_password', data)
+  return response.data
+}
+
+export async function requestPasswordReset(email: string) {
+  const res = await api.post('/api/v1/user/reset_password', { email })
+  return res.data
+}

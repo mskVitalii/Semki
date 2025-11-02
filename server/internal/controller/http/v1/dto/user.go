@@ -86,7 +86,7 @@ func (req *InviteUserRequest) UserToInvite(organizationId primitive.ObjectID) (*
 		Email:            req.Email,
 		Password:         "", // No password for invited users
 		Name:             req.Name,
-		Providers:        []model.UserProvider{},
+		Providers:        []model.UserProvider{model.UserProviders.Email},
 		Verified:         false,
 		Status:           model.UserStatuses.INVITED,
 		OrganizationID:   organizationId,
@@ -153,4 +153,20 @@ func NewUserFromGoogleProvider(user CreateUserByGoogleProvider) *model.User {
 		Providers: []model.UserProvider{model.UserProviders.Google},
 		Status:    model.UserStatuses.ACTIVE,
 	}
+}
+
+type SetPasswordRequest struct {
+	Password string `json:"password" binding:"required"`
+}
+
+type SuccessResponse struct {
+	Message string `json:"message" binding:"required"`
+}
+
+type ResetPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ConfirmResetPasswordRequest struct {
+	Password string `json:"password" binding:"required"`
 }

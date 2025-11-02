@@ -9,6 +9,7 @@ export interface InviteUserData {
     team?: string
     level?: string
     location?: string
+    description?: string
   }
 }
 

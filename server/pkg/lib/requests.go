@@ -26,3 +26,10 @@ func ResponseInternalServerError(c *gin.Context, err error, message string) {
 func ResponseNotFound(c *gin.Context, message string) {
 	c.JSON(http.StatusNotFound, ErrorResponse{Message: message})
 }
+
+func Preflight(c *gin.Context) {
+	c.Header("Access-Control-Allow-Origin", "*")
+	c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+	c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	c.Status(http.StatusOK)
+}

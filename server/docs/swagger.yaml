@@ -11,6 +11,13 @@ definitions:
       updated_at:
         type: integer
     type: object
+  dto.ConfirmResetPasswordRequest:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
   dto.CreateChatRequest:
     properties:
       message:
@@ -255,6 +262,13 @@ definitions:
             type: string
         type: object
     type: object
+  dto.ResetPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   dto.RestoreUserResponse:
     properties:
       message:
@@ -269,10 +283,24 @@ definitions:
       user:
         $ref: '#/definitions/model.User'
     type: object
+  dto.SetPasswordRequest:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
   dto.SuccessLogoutResponse:
     properties:
       message:
         type: string
+    type: object
+  dto.SuccessResponse:
+    properties:
+      message:
+        type: string
+    required:
+    - message
     type: object
   dto.TeamResponse:
     properties:
@@ -1269,6 +1297,110 @@ paths:
       summary: Register a new user
       tags:
       - auth
+  /api/v1/user/reset_password:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset email with a secure link to the user
+      parameters:
+      - description: Email for password reset
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: If the email exists, reset instructions have been sent
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      summary: Request password reset
+      tags:
+      - users
+  /api/v1/user/reset_password/confirm:
+    get:
+      consumes:
+      - application/json
+      description: Accepts new password from user using a valid reset token. Redirects
+        user to onboarding with JWT.
+      parameters:
+      - description: Password reset token from email link
+        in: query
+        name: token
+        required: true
+        type: string
+      - description: New password
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ConfirmResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "302":
+          description: Redirects to /onboarding with accessToken and refreshToken
+          schema:
+            type: string
+        "400":
+          description: Bad request / invalid token / missing password
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized / expired token
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      summary: Confirm password reset
+      tags:
+      - users
+  /api/v1/user/set_password:
+    post:
+      consumes:
+      - application/json
+      description: Accepts invitation token and sets user password
+      parameters:
+      - description: Token and new password
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/dto.SetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password set successfully
+          schema:
+            $ref: '#/definitions/dto.SuccessResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      summary: Sets password for invited user
+      tags:
+      - users
   /chat:
     post:
       consumes:

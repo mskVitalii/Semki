@@ -10,7 +10,6 @@ import (
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
-	"semki/internal/utils/jwtUtils"
 	"semki/pkg/google"
 	"semki/pkg/telemetry"
 )
@@ -114,13 +113,12 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// Token
-	claims, err := jwtUtils.UserToPayload(userFromDb)
-	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
+	jwtToken, err := s.jwtAuth.TokenGenerator(userFromDb)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
 		return
 	}
 
-	c.Redirect(http.StatusFound, s.frontendUrl+"/login?accessToken="+jwtToken.AccessToken+"&refresh="+jwtToken.RefreshToken)
+	c.Redirect(http.StatusFound, s.frontendUrl+"/login?accessToken="+jwtToken.AccessToken+"&refreshToken="+jwtToken.RefreshToken)
 }

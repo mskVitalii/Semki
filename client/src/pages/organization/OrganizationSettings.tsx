@@ -4,6 +4,7 @@ import {
   Container,
   Divider,
   Group,
+  Loader,
   Paper,
   Stack,
   TextInput,
@@ -18,7 +19,12 @@ export function OrganizationSettings() {
   const organization = useOrganizationStore((s) => s.organization)
   const isAdmin = useAuthStore((s) => s.isAdmin)
 
-  if (!organization) return <div>Loading...</div>
+  if (!organization)
+    return (
+      <div className="flex-1 flex items-center justify-center h-full">
+        <Loader color="green" />
+      </div>
+    )
 
   return (
     <Container className="py-12!">

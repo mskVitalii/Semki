@@ -128,7 +128,7 @@ export default function Profile() {
           <Select
             label="Team"
             data={organization.semantic.teams.map((t) => ({
-              value: t.id,
+              value: t.id!,
               label: t.name,
             }))}
             clearable={false}
@@ -140,7 +140,7 @@ export default function Profile() {
           <Select
             label="Level"
             data={organization.semantic.levels.map((l) => ({
-              value: l.id,
+              value: l.id!,
               label: l.name,
             }))}
             clearable={false}
@@ -151,8 +151,8 @@ export default function Profile() {
           <Select
             label="Location"
             data={organization.semantic.locations.map((l) => ({
-              value: l,
-              label: l,
+              value: l.id!,
+              label: l.name,
             }))}
             clearable={false}
             value={form.semantic.location}

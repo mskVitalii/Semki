@@ -42,9 +42,7 @@ export const useOrganizationStore = create<OrganizationState>()(
 function getOrgDomainFromHref(): string {
   const hostname = window.location.hostname
   const isLocalDev = hostname === 'localhost' || hostname === '127.0.0.1'
-  const organization_domain = isLocalDev
-    ? 'mockOrganization'
-    : hostname.split('.')[0]
+  const organization_domain = isLocalDev ? 'Staffbase' : hostname.split('.')[0]
 
   return organization_domain.toLocaleLowerCase().trim().replaceAll(' ', '-')
 }

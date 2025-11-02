@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	jwt "github.com/appleboy/gin-jwt/v3"
+	ginJwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"semki/internal/adapter/mongo"
@@ -114,11 +114,6 @@ func (s *authService) Authenticate(request dto.LoginRequest) (*model.User, error
 //	@Failure		500	{object}	dto.UnauthorizedResponse	"Internal server error"
 //	@Router			/api/v1/claims [get]
 func (s *authService) ClaimsHandler(c *gin.Context) {
-	claimsRaw := jwt.ExtractClaims(c)
+	claimsRaw := ginJwt.ExtractClaims(c)
 	c.JSON(http.StatusOK, claimsRaw)
-}
-
-func (s *authService) ResetPassword(c *gin.Context) {
-	// TODO: implement reset password with email
-	panic("implement me")
 }
