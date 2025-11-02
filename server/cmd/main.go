@@ -99,7 +99,7 @@ func startup(cfg *config.Config) {
 	organizationService := service.NewOrganizationService(mongoRepo)
 	authService := service.NewAuthService(mongoRepo)
 	authMiddleware := jwtUtils.Startup(cfg, authService)
-	userService := service.NewUserService(mongoRepo, *emailService, authMiddleware, cfg.FrontendUrl)
+	userService := service.NewUserService(mongoRepo, *emailService, authMiddleware, cfg)
 	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
 	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)

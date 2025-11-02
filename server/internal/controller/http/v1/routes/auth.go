@@ -12,6 +12,7 @@ const (
 	login          = "/login"
 	logout         = "/logout"
 	refreshToken   = "/refresh_token"
+	resetPassword  = "/reset_password"
 	googleLogin    = "/google/login"
 	GoogleCallback = "/google/callback"
 	claims         = "/claims"
@@ -22,7 +23,7 @@ type IAuthService interface {
 	LogoutHandler(c *gin.Context)
 	RefreshTokenHandler(c *gin.Context)
 	ClaimsHandler(c *gin.Context)
-
+	ResetPassword(c *gin.Context)
 	Authenticate(request dto.LoginRequest) (*model.User, error)
 }
 
@@ -48,7 +49,7 @@ func RegisterAuthRoutes(g *gin.RouterGroup,
 		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		c.Status(http.StatusOK)
 	})
-
 	g.GET(GoogleCallback, googleService.GoogleAuthCallback)
 	g.GET(claims, withAuth, authService.ClaimsHandler)
+	g.POST(resetPassword, authService.ResetPassword)
 }

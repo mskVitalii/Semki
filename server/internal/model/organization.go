@@ -55,9 +55,9 @@ type Organization struct {
 }
 
 type OrganizationSemantic struct {
-	Levels    []Level              `bson:"levels" json:"levels"`
-	Teams     []Team               `bson:"teams" json:"teams"`
-	Locations []primitive.ObjectID `bson:"locations" json:"locations"`
+	Levels    []Level    `bson:"levels" json:"levels"`
+	Teams     []Team     `bson:"teams" json:"teams"`
+	Locations []Location `bson:"locations" json:"locations"`
 }
 
 type Level struct {
@@ -70,4 +70,9 @@ type Team struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name"`
 	Description string             `bson:"description" json:"description"`
+}
+
+type Location struct {
+	ID   primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name string             `bson:"name" json:"name"`
 }

@@ -1,6 +1,11 @@
 import { fetchOrganizationUsers } from '@/api/organization'
-import { inviteUser, updateUserStatus, type InviteUserData } from '@/api/user'
-import { UserStatuses, type UserStatus } from '@/common/types'
+import {
+  deleteUserAccount,
+  inviteUser,
+  restoreUserAccount,
+  type InviteUserData,
+} from '@/api/user'
+import { UserStatuses } from '@/common/types'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import {
@@ -64,9 +69,24 @@ export function OrganizationUsers() {
     },
   })
 
-  const updateUserStatusMutation = useMutation({
-    mutationFn: ({ userId, status }: { userId: string; status: UserStatus }) =>
-      updateUserStatus(userId, status),
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) => deleteUserAccount(userId),
+    onError: (error) => {
+      console.error('Error updating user status:', error)
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update user status. Please try again.',
+        color: 'red',
+      })
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: ['organizationUsers', debouncedSearch],
+      }),
+  })
+
+  const restoreUserAccountMutation = useMutation({
+    mutationFn: (userId: string) => restoreUserAccount(userId),
     onError: (error) => {
       console.error('Error updating user status:', error)
       notifications.show({
@@ -91,13 +111,9 @@ export function OrganizationUsers() {
     })
   }
 
-  const handleChangeStatus = (userId: string, status: UserStatus) => {
-    updateUserStatusMutation.mutate({ userId, status })
-  }
-
   return (
     <Container className="py-12">
-      <Paper className="p-8 max-w-5xl mx-auto space-y-8 backdrop-blur-sm">
+      <Paper className="p-8 mx-auto space-y-8 backdrop-blur-sm">
         <Group className="justify-between items-center">
           <Title order={2}>Organization Users</Title>
         </Group>
@@ -134,7 +150,7 @@ export function OrganizationUsers() {
             />
           </Group>
 
-          <Table.ScrollContainer minWidth={700}>
+          <Table.ScrollContainer minWidth={500}>
             <Table highlightOnHover verticalSpacing="sm">
               <Table.Thead>
                 <Table.Tr>
@@ -221,10 +237,7 @@ export function OrganizationUsers() {
                                 color="red"
                                 variant="light"
                                 onClick={() =>
-                                  handleChangeStatus(
-                                    user._id,
-                                    UserStatuses.DELETED,
-                                  )
+                                  deleteUserMutation.mutate(user._id)
                                 }
                               >
                                 Delete
@@ -236,10 +249,7 @@ export function OrganizationUsers() {
                               color="green"
                               variant="light"
                               onClick={() =>
-                                handleChangeStatus(
-                                  user._id,
-                                  UserStatuses.ACTIVE,
-                                )
+                                restoreUserAccountMutation.mutate(user._id)
                               }
                             >
                               Restore

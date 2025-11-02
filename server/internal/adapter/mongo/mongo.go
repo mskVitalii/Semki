@@ -34,6 +34,11 @@ func SetupMongo(cfg *config.MongoConfig) (*clients.MongoDb, error) {
 		return nil, err
 	}
 
+	if err := CreateOrganizationCollection(db); err != nil {
+		telemetry.Log.Fatal("failed to create organizations collection", zap.Error(err))
+		return nil, err
+	}
+
 	return db, nil
 }
 
@@ -50,6 +55,43 @@ func CreateUserCollection(db *clients.MongoDb) error {
 	coll := db.Client.Database(db.Database).Collection(db.Collections.Users)
 	if _, err = coll.Indexes().CreateOne(ctx, indexModel); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func CreateOrganizationCollection(db *clients.MongoDb) error {
+	ctx := context.Background()
+	err := db.Client.Database(db.Database).CreateCollection(ctx, db.Collections.Organizations)
+	if err != nil && !mongo.IsDuplicateKeyError(err) {
+		return err
+	}
+
+	coll := db.Client.Database(db.Database).Collection(db.Collections.Organizations)
+
+	indexes := []mongo.IndexModel{
+		{
+			Keys:    bson.D{{Key: "title", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		{
+			Keys:    bson.D{{Key: "semantic.levels.name", Value: 1}},
+			Options: options.Index().SetUnique(true).SetSparse(true),
+		},
+		{
+			Keys:    bson.D{{Key: "semantic.teams.name", Value: 1}},
+			Options: options.Index().SetUnique(true).SetSparse(true),
+		},
+		{
+			Keys:    bson.D{{Key: "semantic.locations.name", Value: 1}},
+			Options: options.Index().SetUnique(true).SetSparse(true),
+		},
+	}
+
+	for _, model := range indexes {
+		if _, err := coll.Indexes().CreateOne(ctx, model); err != nil {
+			return err
+		}
 	}
 
 	return nil

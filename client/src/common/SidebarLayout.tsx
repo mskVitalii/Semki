@@ -16,7 +16,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen overflow-x-hidden">
+    <div className="flex h-screen overflow-x-hidden max-w-screen">
       <Box className="hidden! md:block! w-80">
         <Sidebar onNewChat={handleNewChat} />
       </Box>
@@ -36,7 +36,7 @@ export function MainLayout({ children }: MainLayoutProps) {
           <Sidebar onNewChat={handleNewChat} />
         </Drawer>
 
-        <main className="flex-1 flex items-start justify-center h-full max-w-screen overflow-auto">
+        <main className="flex-1 flex items-start justify-center h-full max-w-screen overflow-auto md:w-[calc(100vw-var(--spacing)*80)]">
           {children}
         </main>
       </Box>

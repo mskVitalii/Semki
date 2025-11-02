@@ -1,4 +1,4 @@
-import type { User, UserStatus } from '@/common/types'
+import type { User } from '@/common/types'
 import { api } from './client'
 
 export interface InviteUserData {
@@ -17,7 +17,12 @@ export const inviteUser = async (userData: InviteUserData): Promise<User> => {
   return data
 }
 
-export const updateUserStatus = async (userId: string, status: UserStatus) => {
-  const { data } = await api.patch(`/api/v1/users/${userId}`, { status })
+export const restoreUserAccount = async (userId: string) => {
+  const { data } = await api.post(`/api/v1/users/${userId}/restore`)
+  return data
+}
+
+export const deleteUserAccount = async (userId: string) => {
+  const { data } = await api.delete(`/api/v1/users/${userId}`)
   return data
 }

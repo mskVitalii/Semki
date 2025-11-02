@@ -117,3 +117,8 @@ func (s *authService) ClaimsHandler(c *gin.Context) {
 	claimsRaw := jwt.ExtractClaims(c)
 	c.JSON(http.StatusOK, claimsRaw)
 }
+
+func (s *authService) ResetPassword(c *gin.Context) {
+	// TODO: implement reset password with email
+	panic("implement me")
+}

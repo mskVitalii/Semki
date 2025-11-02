@@ -2,30 +2,34 @@ package service
 
 import (
 	"fmt"
-	jwt "github.com/appleboy/gin-jwt/v3"
+	ginJwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"semki/internal/adapter/mongo"
 	"semki/internal/controller/http/v1/dto"
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
+	"semki/internal/utils/config"
 	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
 	"semki/pkg/telemetry"
+	"time"
 )
 
 // userService - dependent services
 type userService struct {
 	repo         mongo.IRepository
 	emailService EmailService
-	jwtAuth      *jwt.GinJWTMiddleware
-	frontendUrl  string
+	jwtAuth      *ginJwt.GinJWTMiddleware
+	cfg          *config.Config
 }
 
-func NewUserService(repo mongo.IRepository, emailService EmailService, jwtAuth *jwt.GinJWTMiddleware, frontendUrl string) routes.IUserService {
-	return &userService{repo, emailService, jwtAuth, frontendUrl}
+func NewUserService(repo mongo.IRepository, emailService EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
+	return &userService{repo, emailService, jwtAuth, cfg}
 }
 
 // CreateUser godoc
@@ -150,7 +154,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		jwtToken, err := s.jwtAuth.TokenGenerator(claims)
 		if err != nil {
 			telemetry.Log.Error(err.Error())
-			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
+			c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?error=internal%20error%20token")
 			return
 		}
 
@@ -190,10 +194,14 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	jwtToken, err := s.jwtAuth.TokenGenerator(claims)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
-		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
+		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/login?error=internal%20error%20token")
 		return
 	}
 	c.JSON(http.StatusCreated, dto.RegisterUserResponse{Message: "User created", Tokens: *jwtToken})
+}
+
+func (s *userService) VerifyUserEmailHandler(_ *gin.Context) {
+	// TODO:
 }
 
 // GetUser godoc
@@ -468,8 +476,19 @@ func (s *userService) InviteUser(c *gin.Context) {
 		return
 	}
 
-	// TODO: invitation link + handler
-	err = s.emailService.SendInvitationEmail(user.Email, user.Name, organization.Title, "")
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, InviteClaims{
+		UserID:         user.ID,
+		OrganizationID: claims.OrganizationId,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	})
+	tokenString, _ := token.SignedString([]byte(s.cfg.SecretKeyJWT))
+
+	invitationLink := fmt.Sprintf("%s/api/v1/user/%s/invite/accept?token=%s", user.ID, s.cfg.Host+":"+s.cfg.Port, tokenString)
+
+	err = s.emailService.SendInvitationEmail(user.Email, user.Name, organization.Title, invitationLink)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 	}
@@ -478,4 +497,59 @@ func (s *userService) InviteUser(c *gin.Context) {
 		Message: "User invited successfully",
 		UserId:  user.ID.Hex(),
 	})
+}
+
+type InviteClaims struct {
+	UserID         primitive.ObjectID `json:"userId"`
+	OrganizationID primitive.ObjectID `json:"organizationId"`
+	jwt.RegisteredClaims
+}
+
+func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		c.JSON(http.StatusBadRequest, lib.ErrorResponse{Message: "Missing token"})
+		return
+	}
+
+	claims := &InviteClaims{}
+	parsedToken, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (interface{}, error) {
+		return []byte(s.cfg.SecretKeyJWT), nil
+	})
+	if err != nil || !parsedToken.Valid {
+		c.JSON(http.StatusUnauthorized, lib.ErrorResponse{Message: "Invalid or expired token"})
+		return
+	}
+
+	ctx := c.Request.Context()
+	user, err := s.repo.GetUserByID(ctx, claims.UserID)
+	if err != nil || user == nil {
+		c.JSON(http.StatusNotFound, lib.ErrorResponse{Message: "User not found"})
+		return
+	}
+
+	if user.Status != model.UserStatuses.INVITED && user.Password != "" {
+		c.JSON(http.StatusBadRequest, lib.ErrorResponse{Message: "User already activated"})
+		return
+	}
+
+	if user.Status == model.UserStatuses.INVITED {
+		user.Status = model.UserStatuses.ACTIVE
+		err = s.repo.UpdateUser(ctx, user.ID, *user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
+			return
+		}
+	}
+
+	// Token
+	authClaims, err := jwtUtils.UserToPayload(user)
+	jwtToken, err := s.jwtAuth.TokenGenerator(authClaims)
+	if err != nil {
+		telemetry.Log.Error(err.Error())
+		c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?error=internal%20error%20token")
+		return
+	}
+
+	c.Redirect(http.StatusFound, s.cfg.FrontendUrl+"/onboarding?accessToken="+jwtToken.AccessToken+"&refresh="+jwtToken.RefreshToken)
 }

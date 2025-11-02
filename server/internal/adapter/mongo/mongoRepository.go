@@ -31,6 +31,15 @@ type IRepository interface {
 	GetOrganizationByTitle(ctx context.Context, email string) (*model.Organization, error)
 	UpdateOrganization(ctx context.Context, id primitive.ObjectID, organization model.Organization) error
 	DeleteOrganization(ctx context.Context, id primitive.ObjectID) error
+	PatchOrganization(ctx context.Context, orgID primitive.ObjectID, updates bson.M) error
+	AddLevel(ctx context.Context, orgID primitive.ObjectID, level model.Level) error
+	UpdateLevel(ctx context.Context, orgID primitive.ObjectID, levelID primitive.ObjectID, updates bson.M) error
+	DeleteLevel(ctx context.Context, orgID primitive.ObjectID, levelID primitive.ObjectID) error
+	AddTeam(ctx context.Context, orgID primitive.ObjectID, team model.Team) error
+	UpdateTeam(ctx context.Context, orgID primitive.ObjectID, teamID primitive.ObjectID, updates bson.M) error
+	DeleteTeam(ctx context.Context, orgID primitive.ObjectID, teamID primitive.ObjectID) error
+	AddLocation(ctx context.Context, orgID primitive.ObjectID, location model.Location) error
+	DeleteLocation(ctx context.Context, orgID primitive.ObjectID, locationID primitive.ObjectID) error
 
 	CreateChat(ctx context.Context, chat *model.Chat) error
 	GetChatByID(ctx context.Context, id primitive.ObjectID, userID primitive.ObjectID) (*model.Chat, error)
@@ -238,6 +247,210 @@ func (r *repository) DeleteOrganization(ctx context.Context, id primitive.Object
 
 	_, err = coll.DeleteOne(ctx, bson.M{"_id": id})
 	return err
+}
+
+// PatchOrganization updates only provided fields
+func (r *repository) PatchOrganization(ctx context.Context, orgID primitive.ObjectID, updates bson.M) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{"$set": updates}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+// Team methods
+
+func (r *repository) AddTeam(ctx context.Context, orgID primitive.ObjectID, team model.Team) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$push": bson.M{"semantic.teams": team},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *repository) UpdateTeam(ctx context.Context, orgID primitive.ObjectID, teamID primitive.ObjectID, updates bson.M) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	// Build update document for positional operator
+	setUpdates := bson.M{}
+	for key, value := range updates {
+		setUpdates["semantic.teams.$."+key] = value
+	}
+
+	filter := bson.M{
+		"_id":                orgID,
+		"semantic.teams._id": teamID,
+	}
+	update := bson.M{"$set": setUpdates}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *repository) DeleteTeam(ctx context.Context, orgID primitive.ObjectID, teamID primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$pull": bson.M{
+			"semantic.teams": bson.M{"_id": teamID},
+		},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+// Level methods
+
+func (r *repository) AddLevel(ctx context.Context, orgID primitive.ObjectID, level model.Level) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$push": bson.M{"semantic.levels": level},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *repository) UpdateLevel(ctx context.Context, orgID primitive.ObjectID, levelID primitive.ObjectID, updates bson.M) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	setUpdates := bson.M{}
+	for key, value := range updates {
+		setUpdates["semantic.levels.$."+key] = value
+	}
+
+	filter := bson.M{
+		"_id":                 orgID,
+		"semantic.levels._id": levelID,
+	}
+	update := bson.M{"$set": setUpdates}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *repository) DeleteLevel(ctx context.Context, orgID primitive.ObjectID, levelID primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$pull": bson.M{
+			"semantic.levels": bson.M{"_id": levelID},
+		},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+// Location methods
+
+func (r *repository) AddLocation(ctx context.Context, orgID primitive.ObjectID, location model.Location) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$push": bson.M{"semantic.locations": location},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
+}
+
+func (r *repository) DeleteLocation(ctx context.Context, orgID primitive.ObjectID, locationID primitive.ObjectID) error {
+	coll := r.client.Client.Database(r.client.Database).Collection(r.client.Collections.Organizations)
+
+	filter := bson.M{"_id": orgID}
+	update := bson.M{
+		"$pull": bson.M{
+			"semantic.locations": bson.M{"_id": locationID},
+		},
+	}
+
+	result, err := coll.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if result.MatchedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
 }
 
 //endregion

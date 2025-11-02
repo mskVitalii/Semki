@@ -115,27 +115,32 @@ export type Organization = {
 export type OrganizationSemantic = {
   levels: Level[]
   teams: Team[]
-  locations: string[]
+  locations: Location[]
 }
 
 export type Level = {
-  id: string
+  id?: string
   name: string
   description: string
 }
 
 export type Team = {
-  id: string
+  id?: string
   name: string
   description: string
 }
 
+export type Location = {
+  id?: string
+  name: string
+}
+
 export const mockLocations = [
-  'Chemnitz',
-  'Berlin',
-  'Dresden',
-  'Prague',
-  'Amsterdam',
+  { name: 'Chemnitz' },
+  { name: 'Berlin' },
+  { name: 'Dresden' },
+  { name: 'Prague' },
+  { name: 'Amsterdam' },
 ]
 export const mockTeams = [
   {

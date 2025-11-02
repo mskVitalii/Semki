@@ -66,8 +66,8 @@ type InviteUserRequest struct {
 
 type UserSemanticRequest struct {
 	Description string `json:"description"`
-	Team        string `json:"team"`  // ObjectID as string
-	Level       string `json:"level"` // ObjectID as string
+	Team        string `json:"team"`
+	Level       string `json:"level"`
 	Location    string `json:"location"`
 }
 

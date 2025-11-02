@@ -14,6 +14,7 @@ definitions:
   dto.CreateChatRequest:
     properties:
       message:
+        example: Who are you having lasagna with today and why?
         type: string
     required:
     - message
@@ -29,6 +30,25 @@ definitions:
       response:
         type: string
     type: object
+  dto.CreateLevelRequest:
+    properties:
+      description:
+        example: Best of the best
+        type: string
+      name:
+        example: Senior
+        type: string
+    required:
+    - name
+    type: object
+  dto.CreateLocationRequest:
+    properties:
+      name:
+        example: Chemnitz
+        type: string
+    required:
+    - name
+    type: object
   dto.CreateOrganizationRequest:
     properties:
       title:
@@ -39,6 +59,15 @@ definitions:
     properties:
       message:
         type: string
+    type: object
+  dto.CreateTeamRequest:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+    required:
+    - name
     type: object
   dto.CreateUserRequest:
     properties:
@@ -145,6 +174,16 @@ definitions:
       user_id:
         type: string
     type: object
+  dto.LevelResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  dto.LocationResponse:
+    properties:
+      message:
+        type: string
+    type: object
   dto.LoginRequest:
     properties:
       email:
@@ -167,6 +206,17 @@ definitions:
         type: string
     required:
     - refresh_token
+    type: object
+  dto.PatchOrganizationRequest:
+    properties:
+      title:
+        example: StaffAlienBase
+        type: string
+    type: object
+  dto.PatchOrganizationResponse:
+    properties:
+      message:
+        type: string
     type: object
   dto.RefreshTokenRequest:
     properties:
@@ -224,14 +274,30 @@ definitions:
       message:
         type: string
     type: object
+  dto.TeamResponse:
+    properties:
+      message:
+        type: string
+    type: object
   dto.UnauthorizedResponse:
     properties:
       message:
         type: string
     type: object
-  dto.UpdateOrganizationResponse:
+  dto.UpdateLevelRequest:
     properties:
-      message:
+      description:
+        example: Living computer
+        type: string
+      name:
+        example: Lvl 4
+        type: string
+    type: object
+  dto.UpdateTeamRequest:
+    properties:
+      description:
+        type: string
+      name:
         type: string
     type: object
   dto.UpdateUserResponse:
@@ -262,17 +328,11 @@ definitions:
       name:
         type: string
     type: object
-  model.Organization:
+  model.Location:
     properties:
       id:
         type: string
-      plan:
-        type: string
-      semantic:
-        $ref: '#/definitions/model.OrganizationSemantic'
-      status:
-        type: string
-      title:
+      name:
         type: string
     type: object
   model.OrganizationSemantic:
@@ -283,7 +343,7 @@ definitions:
         type: array
       locations:
         items:
-          type: string
+          $ref: '#/definitions/model.Location'
         type: array
       teams:
         items:
@@ -506,6 +566,41 @@ paths:
       summary: Retrieves an organization by user claims
       tags:
       - organizations
+    patch:
+      consumes:
+      - application/json
+      description: Updates only the provided fields of an organization
+      parameters:
+      - description: Fields to update
+        in: body
+        name: organization
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PatchOrganizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.PatchOrganizationResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Partially updates an organization
+      tags:
+      - organizations
     post:
       consumes:
       - application/json
@@ -537,25 +632,25 @@ paths:
       summary: Creates a new organization
       tags:
       - organizations
-  /api/v1/organization/{id}:
-    put:
+  /api/v1/organization/levels:
+    post:
       consumes:
       - application/json
-      description: Updates an organization in the MongoDB database by its ID.
+      description: Creates a new level in the organization's semantic structure
       parameters:
-      - description: Organization object with updated data
+      - description: Level data
         in: body
-        name: organization
+        name: level
         required: true
         schema:
-          $ref: '#/definitions/model.Organization'
+          $ref: '#/definitions/dto.CreateLevelRequest'
       produces:
       - application/json
       responses:
-        "200":
+        "201":
           description: Successful response
           schema:
-            $ref: '#/definitions/dto.UpdateOrganizationResponse'
+            $ref: '#/definitions/dto.LevelResponse'
         "400":
           description: Bad request
           schema:
@@ -570,7 +665,258 @@ paths:
             $ref: '#/definitions/lib.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Updates an organization by its ID
+      summary: Adds a new level to organization
+      tags:
+      - organizations
+  /api/v1/organization/levels/{levelId}:
+    delete:
+      description: Removes a level from organization by ID
+      parameters:
+      - description: Level ID
+        in: path
+        name: levelId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.LevelResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Deletes a level
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Updates level information by ID
+      parameters:
+      - description: Level ID
+        in: path
+        name: levelId
+        required: true
+        type: string
+      - description: Level data to update
+        in: body
+        name: level
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateLevelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.LevelResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Updates a level
+      tags:
+      - organizations
+  /api/v1/organization/locations:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new location in the organization's semantic structure
+      parameters:
+      - description: Location data
+        in: body
+        name: location
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateLocationRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.LocationResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Adds a new location to organization
+      tags:
+      - organizations
+  /api/v1/organization/locations/{locationId}:
+    delete:
+      description: Removes a location from organization by ID
+      parameters:
+      - description: Location ID
+        in: path
+        name: locationId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.LocationResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Deletes a location
+      tags:
+      - organizations
+  /api/v1/organization/teams:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new team in the organization's semantic structure
+      parameters:
+      - description: Team data
+        in: body
+        name: team
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.TeamResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Adds a new team to organization
+      tags:
+      - organizations
+  /api/v1/organization/teams/{teamId}:
+    delete:
+      description: Removes a team from organization by ID
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.TeamResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Deletes a team
+      tags:
+      - organizations
+    put:
+      consumes:
+      - application/json
+      description: Updates team information by ID
+      parameters:
+      - description: Team ID
+        in: path
+        name: teamId
+        required: true
+        type: string
+      - description: Team data to update
+        in: body
+        name: team
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateTeamRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.TeamResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Updates a team
       tags:
       - organizations
   /api/v1/organization/users:

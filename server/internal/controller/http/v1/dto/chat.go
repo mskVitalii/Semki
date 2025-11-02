@@ -1,7 +1,7 @@
 package dto
 
 type CreateChatRequest struct {
-	Message string `json:"message" binding:"required"`
+	Message string `json:"message" binding:"required" example:"Who are you having lasagna with today and why?"`
 }
 
 type CreateChatResponse struct {

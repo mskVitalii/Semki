@@ -16,13 +16,15 @@ type IUserService interface {
 	RestoreUser(c *gin.Context)
 	InviteUser(c *gin.Context)
 	RegisterUser(c *gin.Context)
+	InviteUserAcceptHandler(c *gin.Context)
 }
 
 func RegisterUserRoutes(g *gin.RouterGroup, userService IUserService, securityHandler gin.HandlerFunc) {
 	//g.POST(userCRUD, userService.CreateUser)
 	g.POST(userCRUD+"/register", userService.RegisterUser)
-	g.POST(userCRUD+"/invite", securityHandler, userService.InviteUser)
 	g.GET(userCRUD+"/:id", securityHandler, userService.GetUser)
+	g.POST(userCRUD+"/invite", securityHandler, userService.InviteUser)
+	g.GET(userCRUD+"/:id/invite/accept", userService.InviteUserAcceptHandler)
 	g.PUT(userCRUD+"/:id", securityHandler, userService.UpdateUser)
 	g.DELETE(userCRUD+"/:id", securityHandler, userService.DeleteUser)
 	g.DELETE(userCRUD+"/:id/restore", securityHandler, userService.RestoreUser)
