@@ -17,10 +17,10 @@ import (
 )
 
 type chatService struct {
-	repo mongo.IRepository
+	repo mongo.IChatRepository
 }
 
-func NewChatService(repo mongo.IRepository) routes.IChatService {
+func NewChatService(repo mongo.IChatRepository) routes.IChatService {
 	return &chatService{repo}
 }
 

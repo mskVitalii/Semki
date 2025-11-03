@@ -92,17 +92,6 @@ const defaultUsers: InviteUserData[] = [
     organizationRole: OrganizationRoles.USER,
   },
   {
-    email: 'samus@galactic-federation.net',
-    name: 'Samus Aran',
-    semantic: {
-      team: '',
-      level: '',
-      location: '',
-      description: `Former Galactic Federation soldier turned bounty hunter. Operates independently using a Power Suit and advanced weapon systems.`,
-    },
-    organizationRole: OrganizationRoles.USER,
-  },
-  {
     email: 'solid.snake@foxhound.org',
     name: 'Solid Snake',
     semantic: {

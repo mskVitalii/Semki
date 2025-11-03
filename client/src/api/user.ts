@@ -19,11 +19,11 @@ export const inviteUser = async (userData: InviteUserData): Promise<User> => {
 }
 
 export const restoreUserAccount = async (userId: string) => {
-  const { data } = await api.post(`/api/v1/users/${userId}/restore`)
+  const { data } = await api.post(`/api/v1/user/${userId}/restore`)
   return data
 }
 
 export const deleteUserAccount = async (userId: string) => {
-  const { data } = await api.delete(`/api/v1/users/${userId}`)
+  const { data } = await api.delete(`/api/v1/user/${userId}`)
   return data
 }

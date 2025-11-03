@@ -18,12 +18,23 @@ func EncryptUserFields(user model.User, passphrase string) (*model.User, error) 
 	return &user, nil
 }
 
-func DecryptUserFields(user model.User, passphrase string) (*model.User, error) {
+func EncryptField(field, passphrase string) (*string, error) {
 	key := lib.GenerateKey(passphrase)
-	decryptedDesc, err := lib.Decrypt(user.Semantic.Description, key)
+	enc, err := lib.Encrypt([]byte(field), key)
 	if err != nil {
 		return nil, err
 	}
-	user.Semantic.Description = decryptedDesc
+	return &enc, nil
+}
+
+func DecryptUserFields(user model.User, passphrase string) (*model.User, error) {
+	key := lib.GenerateKey(passphrase)
+	if user.Semantic.Description != "" {
+		decryptedDesc, err := lib.Decrypt(user.Semantic.Description, key)
+		if err != nil {
+			return nil, err
+		}
+		user.Semantic.Description = decryptedDesc
+	}
 	return &user, nil
 }

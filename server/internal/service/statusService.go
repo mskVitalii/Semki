@@ -11,10 +11,10 @@ import (
 
 // statusService - dependent services
 type statusService struct {
-	repo mongo.IRepository
+	repo mongo.IStatusRepository
 }
 
-func NewStatusService(repo mongo.IRepository) routes.IStatusService {
+func NewStatusService(repo mongo.IStatusRepository) routes.IStatusService {
 	return &statusService{repo: repo}
 }
 

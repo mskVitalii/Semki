@@ -20,11 +20,12 @@ import (
 
 // organizationService - dependent services
 type organizationService struct {
-	repo mongo.IRepository
+	orgRepo  mongo.IOrganizationRepository
+	userRepo mongo.IUserRepository
 }
 
-func NewOrganizationService(repo mongo.IRepository) routes.IOrganizationService {
-	return &organizationService{repo}
+func NewOrganizationService(orgRepo mongo.IOrganizationRepository, userRepo mongo.IUserRepository) routes.IOrganizationService {
+	return &organizationService{orgRepo, userRepo}
 }
 
 // CreateOrganization godoc
@@ -49,7 +50,7 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	organizationByTitle, err := s.repo.GetOrganizationByTitle(ctx, organizationDto.Title)
+	organizationByTitle, err := s.orgRepo.GetOrganizationByTitle(ctx, organizationDto.Title)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check organization existence")
 		return
@@ -62,7 +63,7 @@ func (s *organizationService) CreateOrganization(c *gin.Context) {
 	// Creating organization
 	organization := dto.NewOrganizationFromRequest(organizationDto)
 
-	if err := s.repo.CreateOrganization(ctx, organization); err != nil {
+	if err := s.orgRepo.CreateOrganization(ctx, organization); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create organization")
 		return
 	}
@@ -92,7 +93,7 @@ func (s *organizationService) GetOrganization(c *gin.Context) {
 	telemetry.Log.Info(fmt.Sprintf("GetOrganization -> organizationId%s", organizationId))
 
 	ctx := c.Request.Context()
-	organization, err := s.repo.GetOrganizationByID(ctx, organizationId)
+	organization, err := s.orgRepo.GetOrganizationByID(ctx, organizationId)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get organization")
 		return
@@ -150,7 +151,7 @@ func (s *organizationService) GetOrganizationUsers(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	users, totalCount, err := s.repo.GetUsersByOrganization(ctx, orgID, search, page, limit)
+	users, totalCount, err := s.userRepo.GetUsersByOrganization(ctx, orgID, search, page, limit)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get organization users")
 		return
@@ -203,7 +204,7 @@ func (s *organizationService) GetOrganizationUsers(c *gin.Context) {
 //	}
 //	ctx := c.Request.Context()
 //
-//	if err := s.repo.UpdateOrganization(ctx, paramObjectId, organization); err != nil {
+//	if err := s.chatRepo.UpdateOrganization(ctx, paramObjectId, organization); err != nil {
 //		lib.ResponseInternalServerError(c, err, "Failed to update organization")
 //		return
 //	}
@@ -240,7 +241,7 @@ func (s *organizationService) DeleteOrganization(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.DeleteOrganization(ctx, organizationId); err != nil {
+	if err := s.orgRepo.DeleteOrganization(ctx, organizationId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete organization")
 		return
 	}
@@ -287,7 +288,7 @@ func (s *organizationService) PatchOrganization(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.PatchOrganization(ctx, organizationId, updates); err != nil {
+	if err := s.orgRepo.PatchOrganization(ctx, organizationId, updates); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update organization")
 		return
 	}
@@ -330,7 +331,7 @@ func (s *organizationService) CreateTeam(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.AddTeam(ctx, organizationId, team); err != nil {
+	if err := s.orgRepo.AddTeam(ctx, organizationId, team); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create team")
 		return
 	}
@@ -388,7 +389,7 @@ func (s *organizationService) UpdateTeam(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.UpdateTeam(ctx, organizationId, teamId, updates); err != nil {
+	if err := s.orgRepo.UpdateTeam(ctx, organizationId, teamId, updates); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update team")
 		return
 	}
@@ -425,7 +426,7 @@ func (s *organizationService) DeleteTeam(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.DeleteTeam(ctx, organizationId, teamId); err != nil {
+	if err := s.orgRepo.DeleteTeam(ctx, organizationId, teamId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete team")
 		return
 	}
@@ -468,7 +469,7 @@ func (s *organizationService) CreateLevel(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.AddLevel(ctx, organizationId, level); err != nil {
+	if err := s.orgRepo.AddLevel(ctx, organizationId, level); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create level")
 		return
 	}
@@ -526,7 +527,7 @@ func (s *organizationService) UpdateLevel(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.UpdateLevel(ctx, organizationId, levelId, updates); err != nil {
+	if err := s.orgRepo.UpdateLevel(ctx, organizationId, levelId, updates); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update level")
 		return
 	}
@@ -563,7 +564,7 @@ func (s *organizationService) DeleteLevel(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.DeleteLevel(ctx, organizationId, levelId); err != nil {
+	if err := s.orgRepo.DeleteLevel(ctx, organizationId, levelId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete level")
 		return
 	}
@@ -605,7 +606,7 @@ func (s *organizationService) CreateLocation(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.AddLocation(ctx, organizationId, location); err != nil {
+	if err := s.orgRepo.AddLocation(ctx, organizationId, location); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create location")
 		return
 	}
@@ -642,7 +643,7 @@ func (s *organizationService) DeleteLocation(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.DeleteLocation(ctx, organizationId, locationId); err != nil {
+	if err := s.orgRepo.DeleteLocation(ctx, organizationId, locationId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete location")
 		return
 	}

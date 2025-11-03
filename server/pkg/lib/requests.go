@@ -4,6 +4,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"semki/pkg/telemetry"
 	"time"
 )
 
@@ -14,12 +15,14 @@ type ErrorResponse struct {
 func ResponseBadRequest(c *gin.Context, err error, message string) {
 	sentry.CaptureException(err)
 	sentry.Flush(time.Second * 5)
+	telemetry.Log.Error(message)
 	c.JSON(http.StatusBadRequest, ErrorResponse{Message: message})
 }
 
 func ResponseInternalServerError(c *gin.Context, err error, message string) {
 	sentry.CaptureException(err)
 	sentry.Flush(time.Second * 5)
+	telemetry.Log.Error(message)
 	c.JSON(http.StatusInternalServerError, ErrorResponse{Message: message})
 }
 

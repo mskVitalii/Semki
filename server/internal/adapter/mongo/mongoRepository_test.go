@@ -86,7 +86,7 @@ func TestUserTypes(t *testing.T) {
 	cleanup(t, db, ctx)
 }
 
-func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IRepository, model.User, context.Context) {
+func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IUserRepository, model.User, context.Context) {
 	cfg := config.GetConfig("../../../")
 	telemetry.SetupLogger(cfg)
 
@@ -96,7 +96,7 @@ func arrangeMongo(t *testing.T) (*clients.MongoDb, mongo.IRepository, model.User
 		t.Fatal(err)
 	}
 
-	repo := mongo.New(cfg, &clients.MongoDb{
+	repo := mongo.NewUserRepository(cfg, &clients.MongoDb{
 		Database:    "test_db",
 		Client:      db.Client,
 		Collections: clients.MongoCollectionsNames})

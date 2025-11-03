@@ -1,11 +1,13 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	ginJwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"semki/internal/adapter/mongo"
@@ -13,6 +15,7 @@ import (
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
 	"semki/internal/utils/config"
+	"semki/internal/utils/crypto"
 	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
@@ -22,14 +25,15 @@ import (
 
 // userService - dependent services
 type userService struct {
-	repo         mongo.IRepository
+	userRepo     mongo.IUserRepository
+	orgRepo      mongo.IOrganizationRepository
 	emailService *EmailService
 	jwtAuth      *ginJwt.GinJWTMiddleware
 	cfg          *config.Config
 }
 
-func NewUserService(repo mongo.IRepository, emailService *EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
-	return &userService{repo, emailService, jwtAuth, cfg}
+func NewUserService(userRepo mongo.IUserRepository, orgRepo mongo.IOrganizationRepository, emailService *EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
+	return &userService{userRepo, orgRepo, emailService, jwtAuth, cfg}
 }
 
 // CreateUser godoc
@@ -61,7 +65,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 		return
 	}
 
-	userByEmail, err := s.repo.GetUserByEmail(ctx, userDto.Email)
+	userByEmail, err := s.userRepo.GetUserByEmail(ctx, userDto.Email)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check user existence")
 		return
@@ -75,7 +79,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 		}
 		userByEmail.Password = lib.HashPassword(userDto.Password)
 		userByEmail.Providers = append(userByEmail.Providers, model.UserProviders.Email)
-		if err := s.repo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
+		if err := s.userRepo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
 			lib.ResponseInternalServerError(c, err, "Error while adding Email Provider to existing user")
 			return
 		}
@@ -87,7 +91,7 @@ func (s *userService) CreateUser(c *gin.Context) {
 	// Creating user
 	user := dto.NewUserFromRequest(userDto)
 
-	if err := s.repo.CreateUser(ctx, user); err != nil {
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")
 		return
 	}
@@ -125,7 +129,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		return
 	}
 
-	userByEmail, err := s.repo.GetUserByEmail(ctx, userDto.Email)
+	userByEmail, err := s.userRepo.GetUserByEmail(ctx, userDto.Email)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to check user existence")
 		return
@@ -139,12 +143,12 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		}
 		userByEmail.Password = lib.HashPassword(userDto.Password)
 		userByEmail.Providers = append(userByEmail.Providers, model.UserProviders.Email)
-		if err := s.repo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
+		if err := s.userRepo.UpdateUser(ctx, userByEmail.ID, *userByEmail); err != nil {
 			lib.ResponseInternalServerError(c, err, "Error while adding Email Provider to existing user")
 			return
 		}
 
-		_, err := s.repo.GetOrganizationByID(ctx, userByEmail.OrganizationID)
+		_, err := s.orgRepo.GetOrganizationByID(ctx, userByEmail.OrganizationID)
 		if err != nil {
 			lib.ResponseInternalServerError(c, err, "Failed to get organization")
 			return
@@ -165,7 +169,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	organization := dto.NewOrganizationFromRequest(dto.CreateOrganizationRequest{
 		Title: fmt.Sprintf("%s's organization", userDto.Name),
 	})
-	err = s.repo.CreateOrganization(ctx, organization)
+	err = s.orgRepo.CreateOrganization(ctx, organization)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create organization")
 		return
@@ -175,7 +179,7 @@ func (s *userService) RegisterUser(c *gin.Context) {
 	user.OrganizationID = organization.ID
 	user.OrganizationRole = model.OrganizationRoles.OWNER
 
-	if err := s.repo.CreateUser(ctx, user); err != nil {
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")
 		return
 	}
@@ -232,7 +236,7 @@ func (s *userService) VerifyUserEmailHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByID(ctx, claims.UserID)
+	user, err := s.userRepo.GetUserByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		c.JSON(http.StatusNotFound, lib.ErrorResponse{Message: "User not found"})
 		return
@@ -241,7 +245,7 @@ func (s *userService) VerifyUserEmailHandler(c *gin.Context) {
 	if user.Status == model.UserStatuses.INVITED {
 		user.Status = model.UserStatuses.ACTIVE
 		user.Verified = true
-		err = s.repo.UpdateUser(ctx, user.ID, *user)
+		err = s.userRepo.UpdateUser(ctx, user.ID, *user)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 			return
@@ -295,7 +299,7 @@ func (s *userService) GetUser(c *gin.Context) {
 	telemetry.Log.Info(fmt.Sprintf("GetUser -> userID%s", userID))
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByID(ctx, paramObjectID)
+	user, err := s.userRepo.GetUserByID(ctx, paramObjectID)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to get user")
 		return
@@ -372,7 +376,7 @@ func (s *userService) UpdateUser(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	userByID, err := s.repo.GetUserByID(ctx, paramObjectId)
+	userByID, err := s.userRepo.GetUserByID(ctx, paramObjectId)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("User doesn't exist"), "Use correct id")
 		return
@@ -385,12 +389,133 @@ func (s *userService) UpdateUser(c *gin.Context) {
 		user.Password = userByID.Password
 	}
 
-	if err := s.repo.UpdateUser(ctx, paramObjectId, user); err != nil {
+	if err := s.userRepo.UpdateUser(ctx, paramObjectId, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update user")
 		return
 	}
 
 	c.JSON(http.StatusOK, dto.UpdateUserResponse{Message: "User updated"})
+}
+
+// PatchUser godoc
+//
+//	@Summary		Patches user fields by its ID
+//	@Description	Partially updates a user in the MongoDB database by its ID.
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string						true	"ID of the user to patch"
+//	@Param			user	body		dto.PatchUserRequest		true	"Partial user data to update"
+//	@Success		200		{object}	dto.UpdateUserResponse		"Successful response"
+//	@Failure		401		{object}	dto.UnauthorizedResponse	"Unauthorized"
+//	@Failure		400		{object}	lib.ErrorResponse			"Bad request"
+//	@Failure		500		{object}	lib.ErrorResponse			"Internal server error"
+//	@Router			/api/v1/user/{id} [patch]
+func (s *userService) PatchUser(c *gin.Context) {
+	id := c.Param("id")
+	paramObjectId, err := mongoUtils.StringToObjectID(id)
+	if err != nil {
+		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
+		return
+	}
+
+	var body dto.PatchUserRequest
+	if err := c.ShouldBindJSON(&body); err != nil {
+		lib.ResponseBadRequest(c, err, "Failed to bind body")
+		return
+	}
+
+	userClaims, _ := c.Get(jwtUtils.IdentityKey)
+	if userClaims == nil {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
+		return
+	}
+	claims := userClaims.(*jwtUtils.UserClaims)
+	userId := claims.ID
+	if userId != paramObjectId && (claims.OrganizationRole == model.OrganizationRoles.USER) {
+		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be the same user")
+		return
+	}
+
+	ctx := c.Request.Context()
+	existing, err := s.userRepo.GetUserByID(ctx, paramObjectId)
+	if err != nil {
+		lib.ResponseBadRequest(c, errors.New("User doesn't exist"), "Use correct id")
+		return
+	}
+
+	if existing.Status == model.UserStatuses.DELETED {
+		lib.ResponseBadRequest(c, errors.New("Wrong method"), "Use PATCH /api/v1/user/{id}/restore to change user status")
+		return
+	}
+
+	update := bson.M{}
+	if body.Email != nil {
+		update["email"] = *body.Email
+	}
+	if body.Name != nil {
+		update["name"] = *body.Name
+	}
+	if body.Semantic != nil {
+		semantic := bson.M{}
+		if body.Semantic.Description != nil {
+			semantic["semantic.description"] = *body.Semantic.Description
+		}
+		if body.Semantic.Team != nil {
+			semantic["semantic.team"] = *body.Semantic.Team
+		}
+		if body.Semantic.Level != nil {
+			semantic["semantic.level"] = *body.Semantic.Level
+		}
+		if body.Semantic.Location != nil {
+			semantic["semantic.location"] = *body.Semantic.Location
+		}
+		for k, v := range semantic {
+			update[k] = v
+		}
+	}
+	if body.Contact != nil {
+		if body.Contact.Slack != nil {
+			update["contact.slack"] = *body.Contact.Slack
+		}
+		if body.Contact.Telephone != nil {
+			update["contact.telephone"] = *body.Contact.Telephone
+		}
+		if body.Contact.Email != nil {
+			update["contact.email"] = *body.Contact.Email
+		}
+		if body.Contact.Telegram != nil {
+			update["contact.telegram"] = *body.Contact.Telegram
+		}
+		if body.Contact.WhatsApp != nil {
+			update["contact.whatsapp"] = *body.Contact.WhatsApp
+		}
+	}
+
+	if len(update) == 0 {
+		lib.ResponseBadRequest(c, errors.New("No fields provided"), "Empty patch request")
+		return
+	}
+
+	if desc, ok := update["semantic.description"].(string); ok && desc != "" {
+		encrypted, err := crypto.EncryptField(desc, s.cfg.CryptoKey)
+		if err != nil {
+			lib.ResponseInternalServerError(c, err, "Failed to encrypt fields")
+			return
+		}
+		update["semantic.description"] = encrypted
+	}
+
+	data, err := json.Marshal(update)
+	telemetry.Log.Info(string(data))
+
+	if err := s.userRepo.PatchUser(ctx, paramObjectId, update); err != nil {
+		lib.ResponseInternalServerError(c, err, "Failed to patch user")
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.UpdateUserResponse{Message: "User patched"})
 }
 
 // DeleteUser godoc
@@ -419,13 +544,8 @@ func (s *userService) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
-	userId := userClaims.(*jwtUtils.UserClaims).ID
-	if userId != paramObjectId {
-		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be for the same user")
-		return
-	}
 
-	if err := s.repo.DeleteUser(ctx, paramObjectId); err != nil {
+	if err := s.userRepo.DeleteUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete user")
 		return
 	}
@@ -465,12 +585,13 @@ func (s *userService) RestoreUser(c *gin.Context) {
 		return
 	}
 
-	if claims.OrganizationRole != model.OrganizationRoles.OWNER || claims.OrganizationRole != model.OrganizationRoles.ADMIN {
+	// TODO: move to jwt.go authorize
+	if claims.OrganizationRole != model.OrganizationRoles.OWNER && claims.OrganizationRole != model.OrganizationRoles.ADMIN {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "No access"})
 		return
 	}
 
-	if err := s.repo.RestoreUser(ctx, paramObjectId); err != nil {
+	if err := s.userRepo.RestoreUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to restore user")
 		return
 	}
@@ -520,12 +641,12 @@ func (s *userService) InviteUser(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if err := s.repo.CreateUser(ctx, user); err != nil {
+	if err := s.userRepo.CreateUser(ctx, user); err != nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 		return
 	}
 
-	organization, err := s.repo.GetOrganizationByID(ctx, claims.OrganizationId)
+	organization, err := s.orgRepo.GetOrganizationByID(ctx, claims.OrganizationId)
 	if err != nil || organization == nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: "Organization not found"})
 		return
@@ -577,7 +698,7 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByID(ctx, claims.UserID)
+	user, err := s.userRepo.GetUserByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		c.JSON(http.StatusNotFound, lib.ErrorResponse{Message: "User not found"})
 		return
@@ -591,7 +712,7 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 	if user.Status == model.UserStatuses.INVITED {
 		user.Status = model.UserStatuses.ACTIVE
 		user.Verified = true
-		err = s.repo.UpdateUser(ctx, user.ID, *user)
+		err = s.userRepo.UpdateUser(ctx, user.ID, *user)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 			return
@@ -648,7 +769,7 @@ func (s *userService) SetPassword(c *gin.Context) {
 		return
 	}
 
-	user, err := s.repo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		lib.ResponseBadRequest(c, errors.New("User not found"), "Use correct invitation link")
 		return
@@ -662,7 +783,7 @@ func (s *userService) SetPassword(c *gin.Context) {
 	user.Password = lib.HashPassword(req.Password)
 	user.Status = model.UserStatuses.ACTIVE
 
-	if err := s.repo.UpdateUser(ctx, userID, *user); err != nil {
+	if err := s.userRepo.UpdateUser(ctx, userID, *user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update user")
 		return
 	}
@@ -696,7 +817,7 @@ func (s *userService) ResetPassword(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	user, err := s.userRepo.GetUserByEmail(ctx, req.Email)
 	if err != nil || user == nil {
 		c.JSON(http.StatusOK, dto.SuccessResponse{Message: "If the email exists, reset instructions have been sent"})
 		return
@@ -759,7 +880,7 @@ func (s *userService) ConfirmResetPasswordHandler(c *gin.Context) {
 	userID := claims.UserID
 
 	ctx := c.Request.Context()
-	user, err := s.repo.GetUserByID(ctx, userID)
+	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil || user == nil {
 		lib.ResponseBadRequest(c, errors.New("user not found"), "User does not exist")
 		return
@@ -769,7 +890,7 @@ func (s *userService) ConfirmResetPasswordHandler(c *gin.Context) {
 	user.Status = model.UserStatuses.ACTIVE
 	user.Verified = true
 
-	if err := s.repo.UpdateUser(ctx, user.ID, *user); err != nil {
+	if err := s.userRepo.UpdateUser(ctx, user.ID, *user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to update user password")
 		return
 	}

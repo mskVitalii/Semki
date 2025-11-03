@@ -170,3 +170,21 @@ type ResetPasswordRequest struct {
 type ConfirmResetPasswordRequest struct {
 	Password string `json:"password" binding:"required"`
 }
+
+type PatchUserRequest struct {
+	Email    *string `json:"email,omitempty" bson:"email,omitempty"`
+	Name     *string `json:"name,omitempty" bson:"name,omitempty"`
+	Semantic *struct {
+		Description *string             `json:"description,omitempty" bson:"description,omitempty"`
+		Team        *primitive.ObjectID `json:"team,omitempty" bson:"team,omitempty"`
+		Level       *primitive.ObjectID `json:"level,omitempty" bson:"level,omitempty"`
+		Location    *string             `json:"location,omitempty" bson:"location,omitempty"`
+	} `json:"semantic,omitempty" bson:"semantic,omitempty"`
+	Contact *struct {
+		Slack     *string `json:"slack,omitempty" bson:"slack,omitempty"`
+		Telephone *string `json:"telephone,omitempty" bson:"telephone,omitempty"`
+		Email     *string `json:"email,omitempty" bson:"email,omitempty"`
+		Telegram  *string `json:"telegram,omitempty" bson:"telegram,omitempty"`
+		WhatsApp  *string `json:"whatsapp,omitempty" bson:"whatsapp,omitempty"`
+	} `json:"contact,omitempty" bson:"contact,omitempty"`
+}

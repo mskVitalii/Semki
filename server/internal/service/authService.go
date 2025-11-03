@@ -15,10 +15,10 @@ import (
 
 // authService - dependent services
 type authService struct {
-	repo mongo.IRepository
+	repo mongo.IUserRepository
 }
 
-func NewAuthService(repo mongo.IRepository) routes.IAuthService {
+func NewAuthService(repo mongo.IUserRepository) routes.IAuthService {
 	return &authService{repo}
 }
 

@@ -1,79 +1,70 @@
+import { api } from '@/api/client'
 import { MainLayout } from '@/common/SidebarLayout'
 import { type User } from '@/common/types'
+import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import { useUserStore } from '@/stores/userStore'
 import {
-  Button,
   Card,
   Divider,
   Group,
   Loader,
   Select,
   Stack,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core'
-import { useState } from 'react'
-import { useParams } from 'react-router-dom'
-
-// TODO: API
-// TODO: notification
+import { useForm } from '@mantine/form'
+import { useDebouncedValue } from '@mantine/hooks'
+import { notifications } from '@mantine/notifications'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 export default function Profile() {
-  const { userId } = useParams()
-  const [isEditing, setEditing] = useState(false)
-  const isAdmin = useUserStore((s) => s.isAdmin)
+  const userId = useAuthStore((s) => s.claims?._id)
+  const isAdmin = useAuthStore((s) => s.isAdmin)
+  const queryClient = useQueryClient()
   const user = useUserStore((s) => s.user)
   const organization = useOrganizationStore((s) => s.organization)
-  const [form, setForm] = useState<User | null>(user)
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
-  if (!form || !organization)
+  const mutation = useMutation({
+    mutationFn: (payload: Partial<User>) =>
+      api.patch(`/api/v1/user/${userId}`, payload),
+    onMutate: () => setStatus('saving'),
+    onSuccess: () => {
+      setStatus('saved')
+      setTimeout(() => setStatus('idle'), 1500)
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+    },
+    onError: () => {
+      notifications.show({
+        title: 'Error',
+        message: 'Failed to update profile',
+        color: 'red',
+      })
+      setStatus('idle')
+    },
+  })
+
+  const form = useForm<User>({
+    initialValues: user || ({} as User),
+  })
+
+  const [debounced] = useDebouncedValue(form.values, 1000)
+
+  useEffect(() => {
+    if (userId) mutation.mutate(debounced)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debounced, userId])
+
+  if (!user || !organization)
     return (
       <MainLayout>
         <Loader color="green" />
       </MainLayout>
     )
-
-  const isOwnProfile = userId === user?._id
-
-  const handleChangeEvent = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    path: string[],
-  ) => {
-    handleChange(e.target.value, path)
-  }
-
-  const handleChange = (value: string, path: string[]) => {
-    setForm((prev) => {
-      if (!prev) return prev
-      const updated: User = structuredClone(prev)
-      let target: unknown = updated
-
-      for (let i = 0; i < path.length - 1; i++) {
-        const key = path[i] as keyof typeof target
-        if (typeof target === 'object' && target !== null)
-          target = (target as Record<string, unknown>)[key]
-      }
-
-      if (typeof target === 'object' && target !== null) {
-        const lastKey = path[path.length - 1]
-        ;(target as Record<string, unknown>)[lastKey] = value
-      }
-
-      return updated
-    })
-  }
-
-  const handleSave = async () => {
-    setEditing(false)
-    // TODO: change to tanstack
-    if (!userId) return
-    await fetch(`${import.meta.env.VITE_API_URL}/api/v1/users/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    })
-  }
 
   return (
     <MainLayout>
@@ -85,104 +76,94 @@ export default function Profile() {
       >
         <Stack>
           <Group justify="space-between" mt="md">
-            <Title order={2}>{form.name}</Title>
-
-            {(isAdmin || isOwnProfile) && (
-              <Group justify="flex-end">
-                {isEditing ? (
-                  <>
-                    <Button variant="light" onClick={() => setEditing(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSave}>Save</Button>
-                  </>
-                ) : (
-                  <Button bg="green" onClick={() => setEditing(true)}>
-                    Edit
-                  </Button>
-                )}
-              </Group>
-            )}
+            <Title order={2}>{form.values.name}</Title>
           </Group>
-          <Divider label="General" />
+          <Divider label="General" m="lg" />
           <TextInput
             label="Email"
-            value={form.email}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['email'])}
+            readOnly={!isAdmin}
+            styles={{ label: { marginBottom: '0.75rem' } }}
+            {...form.getInputProps('email')}
           />
           <TextInput
             label="Name"
-            value={form.name}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['name'])}
+            styles={{ label: { marginBottom: '0.75rem' } }}
+            {...form.getInputProps('name')}
           />
-          <Divider label="Semantic" />
-          <TextInput
+          <Divider label="Semantic" m="lg" />
+          <Textarea
             label="Description"
-            value={form.semantic.description}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['semantic', 'description'])}
+            placeholder="Enter user description"
+            minRows={form.values.semantic?.description?.split('\n').length ?? 4}
+            styles={{
+              label: { marginBottom: '0.75rem' },
+              input: { resize: 'vertical' },
+            }}
+            {...form.getInputProps('semantic.description')}
           />
 
-          <Select
-            label="Team"
-            data={organization.semantic.teams.map((t) => ({
-              value: t.id!,
-              label: t.name,
-            }))}
-            clearable={false}
-            readOnly={!isEditing || !isAdmin}
-            value={form.semantic.team}
-            onChange={(v) => handleChange(v ?? '', ['semantic', 'team'])}
-          />
-
-          <Select
-            label="Level"
-            data={organization.semantic.levels.map((l) => ({
-              value: l.id!,
-              label: l.name,
-            }))}
-            clearable={false}
-            readOnly={!isEditing || !isAdmin}
-            value={form.semantic.level}
-            onChange={(v) => handleChange(v ?? '', ['semantic', 'level'])}
-          />
           <Select
             label="Location"
+            styles={{ label: { marginBottom: '0.75rem' } }}
             data={organization.semantic.locations.map((l) => ({
               value: l.id!,
               label: l.name,
             }))}
-            clearable={false}
-            value={form.semantic.location}
-            onChange={(v) => handleChange(v ?? '', ['semantic', 'location'])}
+            {...form.getInputProps('semantic.location')}
           />
-          <Divider label="Contact" />
-          <TextInput
-            label="Slack"
-            value={form.contact.slack}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['contact', 'slack'])}
-          />
-          <TextInput
-            label="Telephone"
-            value={form.contact.telephone}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['contact', 'telephone'])}
-          />
-          <TextInput
-            label="Telegram"
-            value={form.contact.telegram}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['contact', 'telegram'])}
-          />
-          <TextInput
-            label="WhatsApp"
-            value={form.contact.whatsapp}
-            readOnly={!isEditing}
-            onChange={(e) => handleChangeEvent(e, ['contact', 'whatsapp'])}
-          />
+
+          <Group grow>
+            <Select
+              label="Team"
+              readOnly={!isAdmin}
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              data={organization.semantic.teams.map((t) => ({
+                value: t.id!,
+                label: t.name,
+              }))}
+              {...form.getInputProps('semantic.team')}
+            />
+            <Select
+              label="Level"
+              readOnly={!isAdmin}
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              data={organization.semantic.levels.map((l) => ({
+                value: l.id!,
+                label: l.name,
+              }))}
+              {...form.getInputProps('semantic.level')}
+            />
+          </Group>
+          <Divider label="Contact" m="lg" />
+          <Group grow>
+            <TextInput
+              label="Slack"
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              {...form.getInputProps('contact.slack')}
+            />
+            <TextInput
+              label="Telephone"
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              {...form.getInputProps('contact.telephone')}
+            />
+          </Group>
+          <Group grow>
+            <TextInput
+              label="Telegram"
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              {...form.getInputProps('contact.telegram')}
+            />
+            <TextInput
+              label="WhatsApp"
+              styles={{ label: { marginBottom: '0.75rem' } }}
+              {...form.getInputProps('contact.whatsapp')}
+            />
+          </Group>
+          {status !== 'idle' && (
+            <div className="text-sm text-gray-500">
+              {status === 'saving' ? 'Saving…' : 'Saved'}
+            </div>
+          )}
         </Stack>
       </Card>
     </MainLayout>

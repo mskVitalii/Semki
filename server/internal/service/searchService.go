@@ -25,7 +25,8 @@ import (
 type searchService struct {
 	embedder   IEmbedderService
 	qdrantRepo qdrant.IQdrantRepository
-	repo       mongo.IRepository
+	chatRepo   mongo.IChatRepository
+	userRepo   mongo.IUserRepository
 	logger     *zap.Logger
 }
 
@@ -33,15 +34,11 @@ type searchService struct {
 func NewSearchService(
 	embedder IEmbedderService,
 	qdrantRepo qdrant.IQdrantRepository,
-	repo mongo.IRepository,
+	chatRepo mongo.IChatRepository,
+	userRepo mongo.IUserRepository,
 	logger *zap.Logger,
 ) routes.ISearchService {
-	return &searchService{
-		embedder:   embedder,
-		qdrantRepo: qdrantRepo,
-		repo:       repo,
-		logger:     logger,
-	}
+	return &searchService{embedder, qdrantRepo, chatRepo, userRepo, logger}
 }
 
 // Search godoc
@@ -94,7 +91,7 @@ func (s *searchService) Search(c *gin.Context) {
 		return
 	}
 
-	chat, err := s.repo.GetChatByID(c.Request.Context(), chatObjID, userID)
+	chat, err := s.chatRepo.GetChatByID(c.Request.Context(), chatObjID, userID)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "failed to fetch chat")
 		return
@@ -136,7 +133,7 @@ func (s *searchService) Search(c *gin.Context) {
 		userIDs = append(userIDs, oid)
 	}
 
-	users, err := s.repo.GetUsersByIDs(ctx, userIDs)
+	users, err := s.userRepo.GetUsersByIDs(ctx, userIDs)
 	if err != nil {
 		s.logger.Error("Failed to get users by IDs: " + err.Error())
 		lib.ResponseInternalServerError(c, err, "Search failed")
@@ -200,7 +197,7 @@ func (s *searchService) Search(c *gin.Context) {
 					Timestamp: time.Now(),
 				}
 
-				if err := s.repo.AddChatMessages(ctx, chatID, []model.Message{message}); err != nil {
+				if err := s.chatRepo.AddChatMessages(ctx, chatID, []model.Message{message}); err != nil {
 					s.logger.Error("Failed to save chat message: " + err.Error())
 				}
 			}(res)

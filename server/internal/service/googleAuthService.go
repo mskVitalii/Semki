@@ -16,14 +16,14 @@ import (
 
 // authService - dependent services
 type googleAuthService struct {
-	repo        mongo.IRepository
+	repo        mongo.IUserRepository
 	google      google.Google
 	jwtAuth     *jwt.GinJWTMiddleware
 	frontendUrl string
 }
 
 func NewGoogleAuthService(
-	repo mongo.IRepository,
+	repo mongo.IUserRepository,
 	google google.Google,
 	jwtAuth *jwt.GinJWTMiddleware,
 	frontendUrl string,

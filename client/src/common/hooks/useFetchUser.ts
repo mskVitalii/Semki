@@ -26,7 +26,10 @@ export const useFetchUser = () => {
   })
 
   useEffect(() => {
-    if (query.data) setUser(query.data)
+    if (query.data) {
+      setUser(query.data)
+      console.log('useFetchUser -> setUser')
+    }
   }, [query.data, setUser])
 
   useEffect(() => {

@@ -225,6 +225,37 @@ definitions:
       message:
         type: string
     type: object
+  dto.PatchUserRequest:
+    properties:
+      contact:
+        properties:
+          email:
+            type: string
+          slack:
+            type: string
+          telegram:
+            type: string
+          telephone:
+            type: string
+          whatsapp:
+            type: string
+        type: object
+      email:
+        type: string
+      name:
+        type: string
+      semantic:
+        properties:
+          description:
+            type: string
+          level:
+            type: string
+          location:
+            type: string
+          team:
+            type: string
+        type: object
+    type: object
   dto.RefreshTokenRequest:
     properties:
       refresh_token:
@@ -1172,6 +1203,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Retrieves a user by its ID
+      tags:
+      - users
+    patch:
+      consumes:
+      - application/json
+      description: Partially updates a user in the MongoDB database by its ID.
+      parameters:
+      - description: ID of the user to patch
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Partial user data to update
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/dto.PatchUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successful response
+          schema:
+            $ref: '#/definitions/dto.UpdateUserResponse'
+        "400":
+          description: Bad request
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.UnauthorizedResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/lib.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Patches user fields by its ID
       tags:
       - users
     put:

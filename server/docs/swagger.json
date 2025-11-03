@@ -1445,6 +1445,68 @@
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially updates a user in the MongoDB database by its ID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Patches user fields by its ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID of the user to patch",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial user data to update",
+                        "name": "user",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.PatchUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful response",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "$ref": "#/definitions/lib.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/dto.UnauthorizedResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/lib.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/user/{id}/restore": {
@@ -2040,6 +2102,54 @@
             "properties": {
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.PatchUserRequest": {
+            "type": "object",
+            "properties": {
+                "contact": {
+                    "type": "object",
+                    "properties": {
+                        "email": {
+                            "type": "string"
+                        },
+                        "slack": {
+                            "type": "string"
+                        },
+                        "telegram": {
+                            "type": "string"
+                        },
+                        "telephone": {
+                            "type": "string"
+                        },
+                        "whatsapp": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "semantic": {
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string"
+                        },
+                        "level": {
+                            "type": "string"
+                        },
+                        "location": {
+                            "type": "string"
+                        },
+                        "team": {
+                            "type": "string"
+                        }
+                    }
                 }
             }
         },

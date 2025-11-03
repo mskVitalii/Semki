@@ -86,8 +86,13 @@ func startup(cfg *config.Config) {
 	defer redis.Close()
 
 	qdrantRepo := qdrant.New(cfg, vectorDb)
-	mongoRepo := mongo.New(cfg, db)
-	statusService := service.NewStatusService(mongoRepo)
+
+	statusRepo := mongo.NewStatusRepository(db)
+	chatRepo := mongo.NewChatRepository(db)
+	userRepo := mongo.NewUserRepository(cfg, db)
+	orgRepo := mongo.NewOrganizationRepository(db)
+
+	statusService := service.NewStatusService(statusRepo)
 	emailService := service.NewEmailService(
 		cfg.SMTP.Host,
 		cfg.SMTP.Port,
@@ -96,15 +101,15 @@ func startup(cfg *config.Config) {
 		cfg.SMTP.From,
 		cfg.SMTP.FromName,
 	)
-	organizationService := service.NewOrganizationService(mongoRepo)
-	authService := service.NewAuthService(mongoRepo)
+	organizationService := service.NewOrganizationService(orgRepo, userRepo)
+	authService := service.NewAuthService(userRepo)
 	authMiddleware := jwtUtils.Startup(cfg, authService)
-	userService := service.NewUserService(mongoRepo, emailService, authMiddleware, cfg)
+	userService := service.NewUserService(userRepo, orgRepo, emailService, authMiddleware, cfg)
 	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
-	searchService := service.NewSearchService(embedderService, qdrantRepo, mongoRepo, telemetry.Log)
+	searchService := service.NewSearchService(embedderService, qdrantRepo, chatRepo, userRepo, telemetry.Log)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
 	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
-	chatService := service.NewChatService(mongoRepo)
+	chatService := service.NewChatService(chatRepo)
 
 	var googleAuthService routes.IGoogleAuthService
 	if cfg.Google.Enabled {
@@ -112,7 +117,7 @@ func startup(cfg *config.Config) {
 			cfg.Protocol+"://"+cfg.Host+":"+cfg.Port+"/api/v1"+routes.GoogleCallback,
 			cfg.Google.ClientID,
 			cfg.Google.ClientSecret)
-		googleAuthService = service.NewGoogleAuthService(mongoRepo, google, authMiddleware, cfg.FrontendUrl)
+		googleAuthService = service.NewGoogleAuthService(userRepo, google, authMiddleware, cfg.FrontendUrl)
 	}
 	// endregion
 

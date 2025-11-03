@@ -42,6 +42,7 @@ export function OrganizationUsers() {
   const { data, isError, isLoading } = useQuery({
     queryKey: ['organizationUsers', page, debouncedSearch],
     queryFn: () => fetchOrganizationUsers(page, PAGE_SIZE, debouncedSearch),
+    refetchOnWindowFocus: true,
   })
 
   const pageCount = Math.ceil((data?.totalCount ?? 0) / PAGE_SIZE)
@@ -161,7 +162,7 @@ export function OrganizationUsers() {
                   <Table.Th>Location</Table.Th>
                   <Table.Th>Role</Table.Th>
                   <Table.Th>Status</Table.Th>
-                  <Table.Th>Actions</Table.Th>
+                  {isAdmin && <Table.Th>Actions</Table.Th>}
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
@@ -218,44 +219,49 @@ export function OrganizationUsers() {
                         <Table.Td>{user.semantic.location}</Table.Td>
                         <Table.Td>{user.organizationRole}</Table.Td>
                         <Table.Td>
-                          <Badge color={statusColor}>{user.status}</Badge>
+                          <Badge color={statusColor} w={'max-content'}>
+                            {user.status}
+                          </Badge>
                         </Table.Td>
-                        <Table.Td>
-                          {user.status !== UserStatuses.DELETED ? (
-                            <Group>
+
+                        {isAdmin && (
+                          <Table.Td>
+                            {user.status !== UserStatuses.DELETED ? (
+                              <Group w={'max-content'}>
+                                <Button
+                                  size="xs"
+                                  color="blue"
+                                  variant="light"
+                                  component="a"
+                                  href={`/profile/${user._id}`}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="xs"
+                                  color="red"
+                                  variant="light"
+                                  onClick={() =>
+                                    deleteUserMutation.mutate(user._id)
+                                  }
+                                >
+                                  Delete
+                                </Button>
+                              </Group>
+                            ) : (
                               <Button
                                 size="xs"
-                                color="blue"
-                                variant="light"
-                                component="a"
-                                href={`/profile/${user._id}`}
-                              >
-                                Edit
-                              </Button>
-                              <Button
-                                size="xs"
-                                color="red"
+                                color="green"
                                 variant="light"
                                 onClick={() =>
-                                  deleteUserMutation.mutate(user._id)
+                                  restoreUserAccountMutation.mutate(user._id)
                                 }
                               >
-                                Delete
+                                Restore
                               </Button>
-                            </Group>
-                          ) : (
-                            <Button
-                              size="xs"
-                              color="green"
-                              variant="light"
-                              onClick={() =>
-                                restoreUserAccountMutation.mutate(user._id)
-                              }
-                            >
-                              Restore
-                            </Button>
-                          )}
-                        </Table.Td>
+                            )}
+                          </Table.Td>
+                        )}
                       </Table.Tr>
                     )
                   })
