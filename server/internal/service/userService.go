@@ -634,7 +634,7 @@ func (s *userService) InviteUser(c *gin.Context) {
 		return
 	}
 
-	user, err := req.UserToInvite(claims.OrganizationId)
+	user, err := req.UserToInvite(claims.OrganizationID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, lib.ErrorResponse{Message: "Invalid data: " + err.Error()})
 		return
@@ -646,7 +646,7 @@ func (s *userService) InviteUser(c *gin.Context) {
 		return
 	}
 
-	organization, err := s.orgRepo.GetOrganizationByID(ctx, claims.OrganizationId)
+	organization, err := s.orgRepo.GetOrganizationByID(ctx, claims.OrganizationID)
 	if err != nil || organization == nil {
 		c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: "Organization not found"})
 		return
@@ -654,7 +654,7 @@ func (s *userService) InviteUser(c *gin.Context) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, InviteClaims{
 		UserID:         user.ID,
-		OrganizationID: claims.OrganizationId,
+		OrganizationID: claims.OrganizationID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * 7 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

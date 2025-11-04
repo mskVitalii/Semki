@@ -89,7 +89,7 @@ func (s *organizationService) GetOrganization(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 	telemetry.Log.Info(fmt.Sprintf("GetOrganization -> organizationId%s", organizationId))
 
 	ctx := c.Request.Context()
@@ -130,7 +130,7 @@ func (s *organizationService) GetOrganizationUsers(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	orgID := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	orgID := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	pageStr := c.Query("page")
 	limitStr := c.Query("limit")
@@ -196,7 +196,7 @@ func (s *organizationService) GetOrganizationUsers(c *gin.Context) {
 //		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 //		return
 //	}
-//	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+//	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 //
 //	if organizationId != organization.ID || organizationId != paramObjectId {
 //		lib.ResponseBadRequest(c, errors.New("Wrong organization id"), "Organization id must be the same organization")
@@ -234,7 +234,7 @@ func (s *organizationService) DeleteOrganization(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "No claims"})
 		return
 	}
-	organizationId := claims.OrganizationId
+	organizationId := claims.OrganizationID
 	if claims.OrganizationRole != model.OrganizationRoles.ADMIN || claims.OrganizationRole != model.OrganizationRoles.OWNER {
 		lib.ResponseBadRequest(c, errors.New("Not enough rights"), "Not enough rights")
 		return
@@ -269,7 +269,7 @@ func (s *organizationService) PatchOrganization(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	var req dto.PatchOrganizationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -316,7 +316,7 @@ func (s *organizationService) CreateTeam(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	var req dto.CreateTeamRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -360,7 +360,7 @@ func (s *organizationService) UpdateTeam(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	teamIdStr := c.Param("teamId")
 	teamId, err := mongoUtils.StringToObjectID(teamIdStr)
@@ -416,7 +416,7 @@ func (s *organizationService) DeleteTeam(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	teamIdStr := c.Param("teamId")
 	teamId, err := mongoUtils.StringToObjectID(teamIdStr)
@@ -454,7 +454,7 @@ func (s *organizationService) CreateLevel(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	var req dto.CreateLevelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -498,7 +498,7 @@ func (s *organizationService) UpdateLevel(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	levelIdStr := c.Param("levelId")
 	levelId, err := mongoUtils.StringToObjectID(levelIdStr)
@@ -554,7 +554,7 @@ func (s *organizationService) DeleteLevel(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	levelIdStr := c.Param("levelId")
 	levelId, err := mongoUtils.StringToObjectID(levelIdStr)
@@ -592,7 +592,7 @@ func (s *organizationService) CreateLocation(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	var req dto.CreateLocationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -633,7 +633,7 @@ func (s *organizationService) DeleteLocation(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
 		return
 	}
-	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationId
+	organizationId := userClaims.(*jwtUtils.UserClaims).OrganizationID
 
 	locationIdStr := c.Param("locationId")
 	locationId, err := mongoUtils.StringToObjectID(locationIdStr)

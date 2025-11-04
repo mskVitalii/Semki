@@ -93,7 +93,7 @@ func NoRoute(c *gin.Context) {
 
 type UserClaims struct {
 	ID               primitive.ObjectID     `json:"_id"`
-	OrganizationId   primitive.ObjectID     `json:"organizationId"`
+	OrganizationID   primitive.ObjectID     `json:"organizationId"`
 	OrganizationRole model.OrganizationRole `json:"organizationRole"`
 }
 
@@ -117,7 +117,7 @@ func UserToPayload(data interface{}) (*UserClaims, error) {
 	}
 	return &UserClaims{
 		ID:               user.ID,
-		OrganizationId:   user.OrganizationID,
+		OrganizationID:   user.OrganizationID,
 		OrganizationRole: user.OrganizationRole,
 	}, nil
 }
@@ -126,7 +126,7 @@ func payloadFunc(data interface{}) gojwt.MapClaims {
 	if v, err := UserToPayload(data); err == nil {
 		return gojwt.MapClaims{
 			IdentityKey:        v.ID.Hex(),
-			"organizationId":   v.OrganizationId.Hex(),
+			"organizationId":   v.OrganizationID.Hex(),
 			"organizationRole": string(v.OrganizationRole),
 		}
 	}
@@ -164,7 +164,7 @@ func identity(c *gin.Context) interface{} {
 
 	return &UserClaims{
 		ID:               id,
-		OrganizationId:   orgId,
+		OrganizationID:   orgId,
 		OrganizationRole: model.OrganizationRole(orgRole),
 	}
 }

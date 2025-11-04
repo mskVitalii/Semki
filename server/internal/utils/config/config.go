@@ -90,6 +90,7 @@ type Config struct {
 	JsonLog          bool
 	EnabledPyroscope bool
 	EnabledSentry    bool
+	OpenAIKey        string
 }
 
 const configPath = "app.yml"
@@ -178,6 +179,7 @@ func GetConfig(rootPath string) *Config {
 		instance.SMTP.From = getEnvKey("SMTP_FROM")
 		instance.SMTP.FromName = getEnvKey("SMTP_FROM_NAME")
 
+		instance.OpenAIKey = getEnvKey("OPEN_AI_KEY")
 		// endregion
 	})
 	return instance

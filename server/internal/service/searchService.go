@@ -24,7 +24,9 @@ import (
 
 type searchService struct {
 	embedder   IEmbedderService
+	llm        ILLMService
 	qdrantRepo qdrant.IQdrantRepository
+	orgRepo    mongo.IOrganizationRepository
 	chatRepo   mongo.IChatRepository
 	userRepo   mongo.IUserRepository
 	logger     *zap.Logger
@@ -33,12 +35,14 @@ type searchService struct {
 // NewSearchService creates a new search service
 func NewSearchService(
 	embedder IEmbedderService,
+	llm ILLMService,
 	qdrantRepo qdrant.IQdrantRepository,
+	orgRepo mongo.IOrganizationRepository,
 	chatRepo mongo.IChatRepository,
 	userRepo mongo.IUserRepository,
 	logger *zap.Logger,
 ) routes.ISearchService {
-	return &searchService{embedder, qdrantRepo, chatRepo, userRepo, logger}
+	return &searchService{embedder, llm, qdrantRepo, orgRepo, chatRepo, userRepo, logger}
 }
 
 // Search godoc
@@ -81,7 +85,7 @@ func (s *searchService) Search(c *gin.Context) {
 	}
 	claims := userClaims.(*jwtUtils.UserClaims)
 	userID := claims.ID
-	chatID := claims.OrganizationId
+	chatID := claims.OrganizationID
 
 	ctx := c.Request.Context()
 
@@ -140,8 +144,6 @@ func (s *searchService) Search(c *gin.Context) {
 		return
 	}
 
-	// TODO: use LLMService to get the description
-	// TODO: stream the SearchResultWithUser one-by-one in goroutines
 	results := make([]dto.SearchResultWithUser, 0, len(users))
 	for _, res := range vectorSearchResults {
 		oid, err := mongoUtils.StringToObjectID(res.UserID)
@@ -159,6 +161,13 @@ func (s *searchService) Search(c *gin.Context) {
 		}
 	}
 
+	organization, err := s.orgRepo.GetOrganizationByID(ctx, claims.OrganizationID)
+	if err != nil {
+		s.logger.Error("Failed to get organization: " + err.Error())
+		lib.ResponseInternalServerError(c, err, "Failed to get organization")
+		return
+	}
+
 	c.Stream(func(w io.Writer) bool {
 		resultsChan := make(chan dto.SearchResultWithUserAndDescription)
 		go func() {
@@ -169,8 +178,12 @@ func (s *searchService) Search(c *gin.Context) {
 				go func(res dto.SearchResultWithUser) {
 					defer wg.Done()
 
-					desc := "TODO s.llmService.DescribeUser(ctx, user)"
-					//desc, _ := s.llmService.DescribeUser(ctx, user)
+					desc, err := s.llm.DescribeUser(ctx, req.Query, *organization, *res.User)
+					if err != nil {
+						s.logger.Warn("DescribeUser failed: " + err.Error())
+						desc = "Failed to generate reasoning"
+					}
+
 					resultsChan <- dto.SearchResultWithUserAndDescription{
 						SearchResultWithUser: &dto.SearchResultWithUser{
 							Score: res.Score,
@@ -205,6 +218,7 @@ func (s *searchService) Search(c *gin.Context) {
 
 		return false
 	})
+
 }
 
 // parseSearchRequest parses search parameters from query string
