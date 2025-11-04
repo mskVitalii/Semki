@@ -25,6 +25,7 @@ import {
 import { useDebouncedValue, useDisclosure } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { useState } from 'react'
 import OrganizationInviteUserForm from './OrganizationInviteUserForm'
 
@@ -72,11 +73,14 @@ export function OrganizationUsers() {
 
   const deleteUserMutation = useMutation({
     mutationFn: (userId: string) => deleteUserAccount(userId),
-    onError: (error) => {
+    onError: (error: AxiosError) => {
       console.error('Error updating user status:', error)
+      const message =
+        (error?.response?.data as { message: string }).message ??
+        'Failed to delete user. Please try again.'
       notifications.show({
-        title: 'Error',
-        message: 'Failed to update user status. Please try again.',
+        title: message,
+        message: 'Error',
         color: 'red',
       })
     },
@@ -92,7 +96,7 @@ export function OrganizationUsers() {
       console.error('Error updating user status:', error)
       notifications.show({
         title: 'Error',
-        message: 'Failed to update user status. Please try again.',
+        message: 'Failed to restore user. Please try again.',
         color: 'red',
       })
     },
@@ -204,7 +208,9 @@ export function OrganizationUsers() {
 
                     return (
                       <Table.Tr key={user._id}>
-                        <Table.Td>{user.name}</Table.Td>
+                        <Table.Td className="whitespace-nowrap">
+                          {user.name}
+                        </Table.Td>
                         <Table.Td>{user.email}</Table.Td>
                         <Table.Td>
                           {organization?.semantic.teams.find(
@@ -216,7 +222,11 @@ export function OrganizationUsers() {
                             (l) => l.id === user.semantic.level,
                           )?.name || '—'}
                         </Table.Td>
-                        <Table.Td>{user.semantic.location}</Table.Td>
+                        <Table.Td>
+                          {organization?.semantic.locations.find(
+                            (l) => l.id === user.semantic.location,
+                          )?.name || '—'}
+                        </Table.Td>
                         <Table.Td>{user.organizationRole}</Table.Td>
                         <Table.Td>
                           <Badge color={statusColor} w={'max-content'}>

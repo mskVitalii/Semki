@@ -20,13 +20,11 @@ import { useListState } from '@mantine/hooks'
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import React, { useCallback, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 
 // TODO: button to retry if no answer in chat & no generation in progress
-
-// TODO: request to start new chat
 
 const Chat: React.FC = () => {
   const [users, usersHandlers] = useListState<SearchResult>([])
@@ -36,25 +34,14 @@ const Chat: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const { mutateAsync: createChat } = useCreateChat()
 
-  const parseSSELine = (line: string): SearchResult | null => {
-    try {
-      if (line === '[DONE]') return null
-
-      return JSON.parse(line)
-    } catch {
-      // If not JSON, treat as plain text
-      console.error('Failed to parse:', line)
-      return null
-    }
-  }
-
   const handleClear = useCallback((): void => {
     usersHandlers.setState([])
     setError('')
   }, [usersHandlers])
 
   const { chatId } = useParams<{ chatId?: string }>()
-  // console.log('chatId', chatId)
+  const navigate = useNavigate()
+
   const { data: chat, isError } = useQuery({
     queryKey: ['chat', chatId],
     queryFn: () => fetchChatById(chatId!),
@@ -71,9 +58,10 @@ const Chat: React.FC = () => {
 
       try {
         const encodedQuestion = encodeURIComponent(question)
-        const url = `${import.meta.env.VITE_API_URL}/api/v1/search?question=${encodedQuestion}`
+        const url = `${import.meta.env.VITE_API_URL}/api/v1/search`
         const response = await fetch(
           url +
+            '?' +
             new URLSearchParams({
               q: encodedQuestion,
               chatId,
@@ -88,27 +76,38 @@ const Chat: React.FC = () => {
 
         if (!response.body) throw new Error('No response body')
 
-        const reader = response.body.getReader()
-        const decoder = new TextDecoder()
+        const stream = response.body
+          .pipeThrough(new TextDecoderStream()) // превращает байты в строки
+          .pipeThrough(
+            new TransformStream({
+              transform(chunk, controller) {
+                chunk.split('\n\n').forEach((line) => controller.enqueue(line))
+              },
+            }),
+          )
 
-        let done = false
-        while (!done) {
-          const { value, done: readerDone } = await reader.read()
-          done = readerDone
-          if (value) {
-            const chunk = decoder.decode(value, { stream: true })
-            chunk.split('\n').forEach((line) => {
-              if (line.trim() === '[DONE]') {
-                done = true
-                return
-              }
-              const parsed = parseSSELine(line)
-              if (parsed) usersHandlers.append(parsed)
-            })
+        const reader = stream.getReader()
+        let buffer = ''
+        while (true) {
+          const { value, done } = await reader.read()
+          if (done) break
+          // console.log('[stream]', value)
+          const line = value.replace(/^event:result\s*/, '').trim()
+          if (!line || line === '[DONE]') continue
+
+          buffer += line.replace(/^data:\s*/, '')
+          console.log('LINE: ', line)
+
+          try {
+            const parsed = JSON.parse(buffer)
+            usersHandlers.append(parsed)
+            buffer = ''
+            console.log('added', parsed)
+          } catch (err) {
+            console.log('CATCH', buffer)
+            console.warn('Failed to parse SSE:', line, err)
           }
         }
-
-        setIsLoading(false)
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {
           setError('Request was cancelled')
@@ -118,8 +117,9 @@ const Chat: React.FC = () => {
         } else {
           setError('Unknown error occurred')
         }
-        setIsLoading(false)
       } finally {
+        console.log('Stream finished -> handleStream')
+        setIsLoading(false)
         abortControllerRef.current = null
       }
     },
@@ -142,6 +142,8 @@ const Chat: React.FC = () => {
 
     // Search
     await handleStream(question.trim(), chat.id)
+    console.log('Stream finished -> handleSubmit')
+    navigate(`/chat/${chat.id}`, { replace: false })
   }
 
   return (

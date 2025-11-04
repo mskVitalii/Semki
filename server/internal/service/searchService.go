@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,26 +24,24 @@ import (
 )
 
 type searchService struct {
-	embedder   IEmbedderService
-	llm        ILLMService
-	qdrantRepo qdrant.IQdrantRepository
-	orgRepo    mongo.IOrganizationRepository
-	chatRepo   mongo.IChatRepository
-	userRepo   mongo.IUserRepository
-	logger     *zap.Logger
+	qdrantService IQdrantService
+	llm           ILLMService
+	orgRepo       mongo.IOrganizationRepository
+	chatRepo      mongo.IChatRepository
+	userRepo      mongo.IUserRepository
+	logger        *zap.Logger
 }
 
 // NewSearchService creates a new search service
 func NewSearchService(
-	embedder IEmbedderService,
+	vectorDB IQdrantService,
 	llm ILLMService,
-	qdrantRepo qdrant.IQdrantRepository,
 	orgRepo mongo.IOrganizationRepository,
 	chatRepo mongo.IChatRepository,
 	userRepo mongo.IUserRepository,
 	logger *zap.Logger,
 ) routes.ISearchService {
-	return &searchService{embedder, llm, qdrantRepo, orgRepo, chatRepo, userRepo, logger}
+	return &searchService{vectorDB, llm, orgRepo, chatRepo, userRepo, logger}
 }
 
 // Search godoc
@@ -72,20 +71,20 @@ func (s *searchService) Search(c *gin.Context) {
 		lib.ResponseBadRequest(c, err, "Invalid search parameters")
 		return
 	}
-	if req.Limit > 20 {
-		req.Limit = 20
-	} else if req.Limit == 0 {
+
+	if req.Limit == 0 {
 		req.Limit = 5
+	} else if req.Limit > 20 {
+		req.Limit = 20
 	}
 
-	userClaims, claimsExists := c.Get(jwtUtils.IdentityKey)
-	if userClaims == nil || claimsExists == false {
+	userClaimsRaw, ok := c.Get(jwtUtils.IdentityKey)
+	if !ok || userClaimsRaw == nil {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
-	claims := userClaims.(*jwtUtils.UserClaims)
+	claims := userClaimsRaw.(*jwtUtils.UserClaims)
 	userID := claims.ID
-	chatID := claims.OrganizationID
 
 	ctx := c.Request.Context()
 
@@ -95,20 +94,12 @@ func (s *searchService) Search(c *gin.Context) {
 		return
 	}
 
-	chat, err := s.chatRepo.GetChatByID(c.Request.Context(), chatObjID, userID)
+	chat, err := s.chatRepo.GetChatByID(ctx, chatObjID, userID)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "failed to fetch chat")
 		return
 	} else if chat == nil {
 		lib.ResponseBadRequest(c, err, "chat does not exist")
-		return
-	}
-
-	vector, err := s.embedder.Embed(req.Query)
-	if err != nil {
-		desc := fmt.Sprintf("Failed to generate embedding: %v", err)
-		s.logger.Error(desc)
-		lib.ResponseInternalServerError(c, err, desc)
 		return
 	}
 
@@ -120,7 +111,7 @@ func (s *searchService) Search(c *gin.Context) {
 		Limit:     req.Limit,
 	}
 
-	vectorSearchResults, err := s.qdrantRepo.SearchUserByVector(ctx, vector, filters)
+	vectorSearchResults, err := s.qdrantService.SearchUsers(ctx, filters)
 	if err != nil {
 		s.logger.Error("Search failed: " + err.Error())
 		lib.ResponseInternalServerError(c, err, "Search failed")
@@ -134,6 +125,9 @@ func (s *searchService) Search(c *gin.Context) {
 			s.logger.Warn("Failed to convert userID to ObjectID: " + err.Error())
 			continue
 		}
+		if oid == userID {
+			continue
+		}
 		userIDs = append(userIDs, oid)
 	}
 
@@ -144,20 +138,18 @@ func (s *searchService) Search(c *gin.Context) {
 		return
 	}
 
-	results := make([]dto.SearchResultWithUser, 0, len(users))
+	userMap := make(map[string]*model.User, len(users))
+	for i := range users {
+		userMap[users[i].ID.Hex()] = users[i]
+	}
+
+	results := make([]dto.SearchResultWithUser, 0, len(vectorSearchResults))
 	for _, res := range vectorSearchResults {
-		oid, err := mongoUtils.StringToObjectID(res.UserID)
-		if err != nil {
-			continue
-		}
-		for _, u := range users {
-			if u.ID == oid {
-				results = append(results, dto.SearchResultWithUser{
-					Score: res.Score,
-					User:  u,
-				})
-				break
-			}
+		if user, ok := userMap[res.UserID]; ok {
+			results = append(results, dto.SearchResultWithUser{
+				Score: res.Score,
+				User:  user,
+			})
 		}
 	}
 
@@ -170,6 +162,8 @@ func (s *searchService) Search(c *gin.Context) {
 
 	c.Stream(func(w io.Writer) bool {
 		resultsChan := make(chan dto.SearchResultWithUserAndDescription)
+		clientGone := c.Writer.CloseNotify()
+
 		go func() {
 			defer close(resultsChan)
 			var wg sync.WaitGroup
@@ -177,19 +171,17 @@ func (s *searchService) Search(c *gin.Context) {
 				wg.Add(1)
 				go func(res dto.SearchResultWithUser) {
 					defer wg.Done()
-
-					desc, err := s.llm.DescribeUser(ctx, req.Query, *organization, *res.User)
+					timeoutCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+					defer cancel()
+					desc, err := s.llm.DescribeUser(timeoutCtx, req.Query, *organization, *res.User)
 					if err != nil {
 						s.logger.Warn("DescribeUser failed: " + err.Error())
 						desc = "Failed to generate reasoning"
 					}
 
 					resultsChan <- dto.SearchResultWithUserAndDescription{
-						SearchResultWithUser: &dto.SearchResultWithUser{
-							Score: res.Score,
-							User:  res.User,
-						},
-						Description: desc,
+						SearchResultWithUser: &res,
+						Description:          desc,
 					}
 				}(res)
 			}
@@ -197,28 +189,32 @@ func (s *searchService) Search(c *gin.Context) {
 		}()
 
 		for res := range resultsChan {
-			c.SSEvent("result", res)
-
-			go func(result dto.SearchResultWithUserAndDescription) {
-				message := model.Message{
-					Role: "assistant",
-					Content: bson.M{
-						"score":       result.Score,
-						"user":        result.User,
-						"description": result.Description,
-					},
-					Timestamp: time.Now(),
-				}
-
-				if err := s.chatRepo.AddChatMessages(ctx, chatID, []model.Message{message}); err != nil {
-					s.logger.Error("Failed to save chat message: " + err.Error())
-				}
-			}(res)
+			select {
+			case <-clientGone:
+				s.logger.Warn("Client disconnected during stream")
+				return false
+			default:
+				c.SSEvent("result", res)
+				go func(result dto.SearchResultWithUserAndDescription) {
+					message := model.Message{
+						Role: "assistant",
+						Content: bson.M{
+							"score":       result.Score,
+							"user":        result.User,
+							"description": result.Description,
+						},
+						Timestamp: time.Now(),
+					}
+					s.logger.Info(fmt.Sprintf("[%f] Found user: %s", result.Score, result.User.Name))
+					bgCtx := context.Background()
+					if err := s.chatRepo.AddChatMessages(bgCtx, chatObjID, []model.Message{message}); err != nil {
+						s.logger.Error("Failed to save chat message: " + err.Error() + ". Info chatId: " + chatObjID.Hex())
+					}
+				}(res)
+			}
 		}
-
 		return false
 	})
-
 }
 
 // parseSearchRequest parses search parameters from query string

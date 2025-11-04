@@ -3,7 +3,6 @@ import { MainLayout } from '@/common/SidebarLayout'
 import { type User } from '@/common/types'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
-import { useUserStore } from '@/stores/userStore'
 import {
   Card,
   Divider,
@@ -18,14 +17,25 @@ import {
 import { useForm } from '@mantine/form'
 import { useDebouncedValue } from '@mantine/hooks'
 import { notifications } from '@mantine/notifications'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 export default function Profile() {
-  const userId = useAuthStore((s) => s.claims?._id)
+  const { userId } = useParams<{ userId: string }>()
+  const { data: user, isLoading } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: async () => {
+      const { data } = await api.get<User>(`/api/v1/user/${userId}`)
+      return data
+    },
+    enabled: !!userId,
+  })
+
   const isAdmin = useAuthStore((s) => s.isAdmin)
+  const currUserId = useAuthStore((s) => s.claims?._id)
+
   const queryClient = useQueryClient()
-  const user = useUserStore((s) => s.user)
   const organization = useOrganizationStore((s) => s.organization)
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
@@ -36,7 +46,9 @@ export default function Profile() {
     onSuccess: () => {
       setStatus('saved')
       setTimeout(() => setStatus('idle'), 1500)
-      queryClient.invalidateQueries({ queryKey: ['user'] })
+      queryClient.invalidateQueries({ queryKey: ['user', userId] })
+      if (userId === currUserId)
+        queryClient.invalidateQueries({ queryKey: ['user'] })
     },
     onError: () => {
       notifications.show({
@@ -49,20 +61,38 @@ export default function Profile() {
   })
 
   const form = useForm<User>({
+    mode: 'uncontrolled',
     initialValues: user || ({} as User),
   })
 
+  useEffect(() => {
+    if (user) {
+      form.setValues(user)
+      form.setInitialValues(user)
+      form.reset()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
   const [debounced] = useDebouncedValue(form.values, 1000)
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
+    if (isLoading) return
+    if (!isReady) {
+      setIsReady(true)
+      return
+    }
     if (userId) mutation.mutate(debounced)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, userId])
 
-  if (!user || !organization)
+  if (!user || !organization || isLoading)
     return (
       <MainLayout>
-        <Loader color="green" />
+        <div className="flex items-center h-full">
+          <Loader color="green" />
+        </div>
       </MainLayout>
     )
 

@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	ginJwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
@@ -25,15 +24,16 @@ import (
 
 // userService - dependent services
 type userService struct {
-	userRepo     mongo.IUserRepository
-	orgRepo      mongo.IOrganizationRepository
-	emailService *EmailService
-	jwtAuth      *ginJwt.GinJWTMiddleware
-	cfg          *config.Config
+	qdrantService IQdrantService
+	userRepo      mongo.IUserRepository
+	orgRepo       mongo.IOrganizationRepository
+	emailService  *EmailService
+	jwtAuth       *ginJwt.GinJWTMiddleware
+	cfg           *config.Config
 }
 
-func NewUserService(userRepo mongo.IUserRepository, orgRepo mongo.IOrganizationRepository, emailService *EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
-	return &userService{userRepo, orgRepo, emailService, jwtAuth, cfg}
+func NewUserService(qdrantService IQdrantService, userRepo mongo.IUserRepository, orgRepo mongo.IOrganizationRepository, emailService *EmailService, jwtAuth *ginJwt.GinJWTMiddleware, cfg *config.Config) routes.IUserService {
+	return &userService{qdrantService, userRepo, orgRepo, emailService, jwtAuth, cfg}
 }
 
 // CreateUser godoc
@@ -94,6 +94,10 @@ func (s *userService) CreateUser(c *gin.Context) {
 	if err := s.userRepo.CreateUser(ctx, user); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to create user")
 		return
+	}
+
+	if err := s.qdrantService.IndexUser(ctx, user); err != nil {
+		telemetry.Log.Error("Failed to index user in Qdrant: " + err.Error())
 	}
 
 	c.JSON(http.StatusCreated, dto.CreateUserResponse{Message: "User created", User: *user})
@@ -203,6 +207,10 @@ func (s *userService) RegisterUser(c *gin.Context) {
 		return
 	}
 
+	if err := s.qdrantService.IndexUser(ctx, user); err != nil {
+		telemetry.Log.Error("Failed to index created user in Qdrant: " + err.Error())
+	}
+
 	// Token
 	jwtToken, err := s.jwtAuth.TokenGenerator(user)
 	if err != nil {
@@ -285,18 +293,6 @@ func (s *userService) GetUser(c *gin.Context) {
 		lib.ResponseBadRequest(c, errors.New("wrong user id"), "Wrong id format")
 		return
 	}
-
-	userClaims, _ := c.Get(jwtUtils.IdentityKey)
-	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "unauthorized"})
-		return
-	}
-	userID := userClaims.(*jwtUtils.UserClaims).ID
-	if userID != paramObjectID {
-		c.JSON(http.StatusForbidden, dto.UnauthorizedResponse{Message: "Forbidden"})
-		return
-	}
-	telemetry.Log.Info(fmt.Sprintf("GetUser -> userID %s", userID))
 
 	ctx := c.Request.Context()
 	user, err := s.userRepo.GetUserByID(ctx, paramObjectID)
@@ -394,6 +390,10 @@ func (s *userService) UpdateUser(c *gin.Context) {
 		return
 	}
 
+	if err := s.qdrantService.UpdateUser(ctx, &user); err != nil {
+		telemetry.Log.Error("Failed to update user in Qdrant: " + err.Error())
+	}
+
 	c.JSON(http.StatusOK, dto.UpdateUserResponse{Message: "User updated"})
 }
 
@@ -433,7 +433,7 @@ func (s *userService) PatchUser(c *gin.Context) {
 	}
 	claims := userClaims.(*jwtUtils.UserClaims)
 	userId := claims.ID
-	if userId != paramObjectId && (claims.OrganizationRole == model.OrganizationRoles.USER) {
+	if userId != paramObjectId && claims.OrganizationRole == model.OrganizationRoles.USER {
 		lib.ResponseBadRequest(c, errors.New("Wrong user id"), "User id must be the same user")
 		return
 	}
@@ -444,7 +444,6 @@ func (s *userService) PatchUser(c *gin.Context) {
 		lib.ResponseBadRequest(c, errors.New("User doesn't exist"), "Use correct id")
 		return
 	}
-
 	if existing.Status == model.UserStatuses.DELETED {
 		lib.ResponseBadRequest(c, errors.New("Wrong method"), "Use PATCH /api/v1/user/{id}/restore to change user status")
 		return
@@ -453,44 +452,21 @@ func (s *userService) PatchUser(c *gin.Context) {
 	update := bson.M{}
 	if body.Email != nil {
 		update["email"] = *body.Email
+		existing.Email = *body.Email
 	}
 	if body.Name != nil {
 		update["name"] = *body.Name
+		existing.Name = *body.Name
 	}
-	if body.Semantic != nil {
-		semantic := bson.M{}
-		if body.Semantic.Description != nil {
-			semantic["semantic.description"] = *body.Semantic.Description
+	if body.Semantic != nil && body.Semantic.Description != nil {
+		desc := *body.Semantic.Description
+		encrypted, err := crypto.EncryptField(desc, s.cfg.CryptoKey)
+		if err != nil {
+			lib.ResponseInternalServerError(c, err, "Failed to encrypt fields")
+			return
 		}
-		if body.Semantic.Team != nil {
-			semantic["semantic.team"] = *body.Semantic.Team
-		}
-		if body.Semantic.Level != nil {
-			semantic["semantic.level"] = *body.Semantic.Level
-		}
-		if body.Semantic.Location != nil {
-			semantic["semantic.location"] = *body.Semantic.Location
-		}
-		for k, v := range semantic {
-			update[k] = v
-		}
-	}
-	if body.Contact != nil {
-		if body.Contact.Slack != nil {
-			update["contact.slack"] = *body.Contact.Slack
-		}
-		if body.Contact.Telephone != nil {
-			update["contact.telephone"] = *body.Contact.Telephone
-		}
-		if body.Contact.Email != nil {
-			update["contact.email"] = *body.Contact.Email
-		}
-		if body.Contact.Telegram != nil {
-			update["contact.telegram"] = *body.Contact.Telegram
-		}
-		if body.Contact.WhatsApp != nil {
-			update["contact.whatsapp"] = *body.Contact.WhatsApp
-		}
+		update["semantic.description"] = encrypted
+		existing.Semantic.Description = desc
 	}
 
 	if len(update) == 0 {
@@ -498,21 +474,13 @@ func (s *userService) PatchUser(c *gin.Context) {
 		return
 	}
 
-	if desc, ok := update["semantic.description"].(string); ok && desc != "" {
-		encrypted, err := crypto.EncryptField(desc, s.cfg.CryptoKey)
-		if err != nil {
-			lib.ResponseInternalServerError(c, err, "Failed to encrypt fields")
-			return
-		}
-		update["semantic.description"] = encrypted
-	}
-
-	data, err := json.Marshal(update)
-	telemetry.Log.Info(string(data))
-
 	if err := s.userRepo.PatchUser(ctx, paramObjectId, update); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to patch user")
 		return
+	}
+
+	if err := s.qdrantService.UpdateUser(ctx, existing); err != nil {
+		telemetry.Log.Error("Failed to update user in Qdrant: " + err.Error())
 	}
 
 	c.JSON(http.StatusOK, dto.UpdateUserResponse{Message: "User patched"})
@@ -544,10 +512,24 @@ func (s *userService) DeleteUser(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
 		return
 	}
+	claims, ok := userClaims.(*jwtUtils.UserClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
+		return
+	}
+
+	if paramObjectId == claims.ID {
+		lib.ResponseBadRequest(c, errors.New("Cannot delete yourself"), "Cannot delete yourself")
+		return
+	}
 
 	if err := s.userRepo.DeleteUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to delete user")
 		return
+	}
+
+	if err := s.qdrantService.DeleteUser(ctx, id); err != nil {
+		telemetry.Log.Error("Failed to delete user in Qdrant: " + err.Error())
 	}
 
 	c.JSON(http.StatusOK, dto.DeleteUserResponse{Message: "User deleted"})
@@ -574,26 +556,19 @@ func (s *userService) RestoreUser(c *gin.Context) {
 		return
 	}
 
-	userClaims, _ := c.Get(jwtUtils.IdentityKey)
-	if userClaims == nil {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Unauthorized"})
-		return
-	}
-	claims, ok := userClaims.(*jwtUtils.UserClaims)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
-		return
-	}
-
-	// TODO: move to jwt.go authorize
-	if claims.OrganizationRole != model.OrganizationRoles.OWNER && claims.OrganizationRole != model.OrganizationRoles.ADMIN {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "No access"})
-		return
-	}
-
 	if err := s.userRepo.RestoreUser(ctx, paramObjectId); err != nil {
 		lib.ResponseInternalServerError(c, err, "Failed to restore user")
 		return
+	}
+
+	user, err := s.userRepo.GetUserByID(ctx, paramObjectId)
+	if err != nil || user == nil {
+		lib.ResponseInternalServerError(c, err, "Failed to fetch restored user")
+		return
+	}
+
+	if err := s.qdrantService.IndexUser(ctx, user); err != nil {
+		telemetry.Log.Error("Failed to re-index user in Qdrant: " + err.Error())
 	}
 
 	c.JSON(http.StatusOK, dto.DeleteUserResponse{Message: "User deleted"})
@@ -619,11 +594,6 @@ func (s *userService) InviteUser(c *gin.Context) {
 	claims, ok := userClaims.(*jwtUtils.UserClaims)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "Invalid Claims"})
-		return
-	}
-
-	if claims.OrganizationRole != model.OrganizationRoles.OWNER && claims.OrganizationRole != model.OrganizationRoles.ADMIN {
-		c.JSON(http.StatusUnauthorized, dto.UnauthorizedResponse{Message: "No access"})
 		return
 	}
 
@@ -717,6 +687,10 @@ func (s *userService) InviteUserAcceptHandler(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, lib.ErrorResponse{Message: err.Error()})
 			return
 		}
+	}
+
+	if err := s.qdrantService.IndexUser(ctx, user); err != nil {
+		telemetry.Log.Error("Failed to index invited user in Qdrant: " + err.Error())
 	}
 
 	// Token

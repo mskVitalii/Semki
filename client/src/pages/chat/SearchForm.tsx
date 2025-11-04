@@ -37,6 +37,7 @@ function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
           onKeyDown={handleKeyPress}
           disabled={isLoading}
           size="md"
+          styles={{ label: { marginBottom: '0.75rem' } }}
         />
         {isLoading ? (
           <Tooltip label="Stop streaming">

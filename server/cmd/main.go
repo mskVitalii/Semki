@@ -101,16 +101,17 @@ func startup(cfg *config.Config) {
 		cfg.SMTP.From,
 		cfg.SMTP.FromName,
 	)
-	organizationService := service.NewOrganizationService(orgRepo, userRepo)
-	authService := service.NewAuthService(userRepo)
-	authMiddleware := jwtUtils.Startup(cfg, authService)
-	userService := service.NewUserService(userRepo, orgRepo, emailService, authMiddleware, cfg)
 	llmService := service.NewLLMService(cfg.OpenAIKey)
+	chatService := service.NewChatService(chatRepo)
+	authService := service.NewAuthService(userRepo)
+	organizationService := service.NewOrganizationService(orgRepo, userRepo)
 	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
-	searchService := service.NewSearchService(embedderService, llmService, qdrantRepo, orgRepo, chatRepo, userRepo, telemetry.Log)
+	qdrantService := service.NewQdrantService(qdrantRepo, embedderService)
+	authMiddleware := jwtUtils.Startup(cfg, authService)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
 	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
-	chatService := service.NewChatService(chatRepo)
+	searchService := service.NewSearchService(qdrantService, llmService, orgRepo, chatRepo, userRepo, telemetry.Log)
+	userService := service.NewUserService(qdrantService, userRepo, orgRepo, emailService, authMiddleware, cfg)
 
 	var googleAuthService routes.IGoogleAuthService
 	if cfg.Google.Enabled {
@@ -118,7 +119,7 @@ func startup(cfg *config.Config) {
 			cfg.Protocol+"://"+cfg.Host+":"+cfg.Port+"/api/v1"+routes.GoogleCallback,
 			cfg.Google.ClientID,
 			cfg.Google.ClientSecret)
-		googleAuthService = service.NewGoogleAuthService(userRepo, google, authMiddleware, cfg.FrontendUrl)
+		googleAuthService = service.NewGoogleAuthService(qdrantService, userRepo, google, authMiddleware, cfg.FrontendUrl)
 	}
 	// endregion
 
@@ -189,8 +190,9 @@ func startup(cfg *config.Config) {
 	srv := &http.Server{
 		Addr:         ":" + cfg.Port,
 		Handler:      r,
-		ReadTimeout:  time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  5 * time.Minute,
+		WriteTimeout: 5 * time.Minute,
+		IdleTimeout:  5 * time.Minute,
 	}
 	srvErr := make(chan error, 1)
 	go func() {

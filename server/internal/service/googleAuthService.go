@@ -16,20 +16,22 @@ import (
 
 // authService - dependent services
 type googleAuthService struct {
-	repo        mongo.IUserRepository
-	google      google.Google
-	jwtAuth     *jwt.GinJWTMiddleware
-	frontendUrl string
+	qdrantService IQdrantService
+	repo          mongo.IUserRepository
+	google        google.Google
+	jwtAuth       *jwt.GinJWTMiddleware
+	frontendUrl   string
 }
 
 func NewGoogleAuthService(
+	qdrantService IQdrantService,
 	repo mongo.IUserRepository,
 	google google.Google,
 	jwtAuth *jwt.GinJWTMiddleware,
 	frontendUrl string,
 ) routes.IGoogleAuthService {
 
-	return &googleAuthService{repo, google, jwtAuth, frontendUrl}
+	return &googleAuthService{qdrantService, repo, google, jwtAuth, frontendUrl}
 }
 
 // GoogleLoginHandler godoc
@@ -84,36 +86,40 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// DB
-	userFromDb, err := s.repo.GetUserByEmail(ctx, user.Email)
+	userFromDB, err := s.repo.GetUserByEmail(ctx, user.Email)
 	if err != nil {
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20db")
 		return
 	}
 
-	if userFromDb == nil {
-		userFromDb = dto.NewUserFromGoogleProvider(user)
-		if userFromDb.OrganizationRole == "" {
+	if userFromDB == nil {
+		userFromDB = dto.NewUserFromGoogleProvider(user)
+		if userFromDB.OrganizationRole == "" {
 			// Invited users has its Role. Probably fix it later
-			userFromDb.OrganizationRole = model.OrganizationRoles.OWNER
+			userFromDB.OrganizationRole = model.OrganizationRoles.OWNER
 		}
-		if err := s.repo.CreateUser(ctx, userFromDb); err != nil {
+		if err := s.repo.CreateUser(ctx, userFromDB); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
-	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDb.Providers) == false {
-		if userFromDb.Status == model.UserStatuses.DELETED {
+	} else if model.ProviderInUserProviders(model.UserProviders.Google, userFromDB.Providers) == false {
+		if userFromDB.Status == model.UserStatuses.DELETED {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=user%20deleted")
 			return
 		}
-		userFromDb.Providers = append(userFromDb.Providers, model.UserProviders.Google)
-		if err := s.repo.UpdateUser(ctx, userFromDb.ID, *userFromDb); err != nil {
+		userFromDB.Providers = append(userFromDB.Providers, model.UserProviders.Google)
+		if err := s.repo.UpdateUser(ctx, userFromDB.ID, *userFromDB); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20update%20provider")
 			return
 		}
 	}
 
+	if err := s.qdrantService.IndexUser(ctx, userFromDB); err != nil {
+		telemetry.Log.Error("Failed to index created user from Google in Qdrant: " + err.Error())
+	}
+
 	// Token
-	jwtToken, err := s.jwtAuth.TokenGenerator(userFromDb)
+	jwtToken, err := s.jwtAuth.TokenGenerator(userFromDB)
 	if err != nil {
 		telemetry.Log.Error(err.Error())
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20token")
