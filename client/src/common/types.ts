@@ -5,14 +5,13 @@ export interface CreateChatRequest {
 
 export interface CreateChatResponse {
   id: string
-  message: string
-  response: string
+  title: string
   created_at: number
 }
 
 export interface GetChatResponse {
   id: string
-  messages: Array<Record<string, unknown>>
+  messages: (SearchResult | CreateChatResponse)[]
   created_at: number
   updated_at: number
 }

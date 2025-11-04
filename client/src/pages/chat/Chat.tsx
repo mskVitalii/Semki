@@ -1,25 +1,19 @@
 import { fetchChatById } from '@/api/chat'
 import { useCreateChat } from '@/common/hooks/useCreateChat'
 import { MainLayout } from '@/common/SidebarLayout'
-import type { SearchResult } from '@/common/types'
+import type {
+  CreateChatResponse,
+  GetChatResponse,
+  SearchRequest,
+  SearchResult,
+} from '@/common/types'
 import { useAuthStore } from '@/stores/authStore'
-import {
-  ActionIcon,
-  Alert,
-  Anchor,
-  Badge,
-  Card,
-  Divider,
-  Group,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { Alert, Anchor, Badge, Card, Group, Stack, Title } from '@mantine/core'
 import { useListState } from '@mantine/hooks'
-import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
+import { IconAlertCircle } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import React, { useCallback, useRef, useState } from 'react'
+import type { AxiosError } from 'axios'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
@@ -33,6 +27,8 @@ const Chat: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const { mutateAsync: createChat } = useCreateChat()
+  // TEMPORARY
+  const [req, setReq] = useState<SearchRequest>()
 
   const handleClear = useCallback((): void => {
     usersHandlers.setState([])
@@ -42,12 +38,27 @@ const Chat: React.FC = () => {
   const { chatId } = useParams<{ chatId?: string }>()
   const navigate = useNavigate()
 
-  const { data: chat, isError } = useQuery({
+  const { data: chat, isError } = useQuery<GetChatResponse, AxiosError>({
     queryKey: ['chat', chatId],
     queryFn: () => fetchChatById(chatId!),
     enabled: !!chatId,
   })
   console.log('current chat ', chat, isError)
+
+  useEffect(() => {
+    if (!chat) return
+    if (chat.messages.length === 0) return
+    const q = (chat.messages[0] as unknown as CreateChatResponse).title
+    setReq({
+      q,
+      teams: [],
+      levels: [],
+      locations: [],
+      limit: 10,
+    })
+    usersHandlers.setState(chat.messages.filter((x) => 'user' in x))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat])
 
   const handleStream = useCallback(
     async (question: string, chatId: string) => {
@@ -91,20 +102,16 @@ const Chat: React.FC = () => {
         while (true) {
           const { value, done } = await reader.read()
           if (done) break
-          // console.log('[stream]', value)
           const line = value.replace(/^event:result\s*/, '').trim()
           if (!line || line === '[DONE]') continue
 
           buffer += line.replace(/^data:\s*/, '')
-          console.log('LINE: ', line)
 
           try {
             const parsed = JSON.parse(buffer)
             usersHandlers.append(parsed)
             buffer = ''
-            console.log('added', parsed)
           } catch (err) {
-            console.log('CATCH', buffer)
             console.warn('Failed to parse SSE:', line, err)
           }
         }
@@ -146,6 +153,11 @@ const Chat: React.FC = () => {
     navigate(`/chat/${chat.id}`, { replace: false })
   }
 
+  const sortedUsers = useMemo(
+    () => users.sort((a, b) => b.score - a.score),
+    [users],
+  )
+
   return (
     <MainLayout>
       <Card
@@ -162,18 +174,21 @@ const Chat: React.FC = () => {
               gradient={{ from: 'green', to: 'white' }}
               fw={500}
               fz="lg"
-              href="#text-props"
+              className="cursor-default"
             >
               <Title order={2}>🌻 Semki</Title>
             </Anchor>
           </Group>
 
           {/* Input Section */}
-          <SearchForm
-            onSearch={handleSubmit}
-            onCancel={handleCancel}
-            isLoading={isLoading}
-          />
+          {!chat && (
+            <SearchForm
+              onSearch={handleSubmit}
+              onCancel={handleCancel}
+              isLoading={isLoading}
+              req={req}
+            />
+          )}
 
           {/* Error Display */}
           {error && (
@@ -190,52 +205,28 @@ const Chat: React.FC = () => {
           )}
 
           {/* Response Display */}
-          {users.length > 0 && (
+          {sortedUsers.length > 0 && (
             <>
               <Group justify="space-between" mb="sm">
-                <Group>
-                  <Text fw={600} size="lg" className="text-gray-700">
-                    Response
-                  </Text>
-                  {isLoading && (
-                    <Badge color="blue" variant="dot" size="sm">
-                      Streaming...
-                    </Badge>
-                  )}
-                </Group>
-                <Tooltip label="Clear response">
-                  <ActionIcon
-                    onClick={handleClear}
-                    variant="subtle"
-                    color="gray"
-                  >
-                    <IconRefresh size={18} />
-                  </ActionIcon>
-                </Tooltip>
+                <Title order={1} fw={900} className="text-5xl" mt={'lg'}>
+                  {req?.q ?? 'Response'}
+                </Title>
+                {isLoading && (
+                  <Badge color="blue" variant="dot" size="sm">
+                    Streaming...
+                  </Badge>
+                )}
               </Group>
 
               <div className="w-full mx-auto p-4">
-                <Card
-                  shadow="md"
-                  radius="lg"
-                  className="bg-white dark:bg-slate-900"
-                  withBorder
-                >
-                  <Divider my="xl" />
-
-                  {/* Found Users List */}
-                  <div className="mb-4">
-                    <Text fw={500} size="lg" className="text-slate-700  mb-4">
-                      Found Users
-                    </Text>
-
-                    <Stack gap="md">
-                      {users.map((userRes) => (
-                        <UserResultCard data={userRes} key={userRes.user._id} />
-                      ))}
-                    </Stack>
-                  </div>
-                </Card>
+                {/* Found Users List */}
+                <div className="mb-4">
+                  <Stack gap="md">
+                    {sortedUsers.map((userRes) => (
+                      <UserResultCard data={userRes} key={userRes.user._id} />
+                    ))}
+                  </Stack>
+                </div>
               </div>
             </>
           )}

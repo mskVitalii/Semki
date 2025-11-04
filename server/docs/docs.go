@@ -922,7 +922,7 @@ const docTemplate = `{
                     "text/event-stream"
                 ],
                 "tags": [
-                    "chat"
+                    "chats"
                 ],
                 "summary": "Semantic user search",
                 "parameters": [
@@ -1818,10 +1818,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
-                },
-                "response": {
+                "title": {
                     "type": "string"
                 }
             }

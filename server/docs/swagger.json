@@ -915,7 +915,7 @@
                     "text/event-stream"
                 ],
                 "tags": [
-                    "chat"
+                    "chats"
                 ],
                 "summary": "Semantic user search",
                 "parameters": [
@@ -1811,10 +1811,7 @@
                 "id": {
                     "type": "string"
                 },
-                "message": {
-                    "type": "string"
-                },
-                "response": {
+                "title": {
                     "type": "string"
                 }
             }

@@ -1,4 +1,4 @@
-import type { GetUserHistoryResponse } from '@/common/types'
+import type { GetChatResponse, GetUserHistoryResponse } from '@/common/types'
 import { api } from './client'
 
 export const chatHistory = async ({
@@ -15,8 +15,7 @@ export const chatHistory = async ({
   return response.data
 }
 
-
-export const fetchChatById = async (id: string) => {
+export const fetchChatById = async (id: string): Promise<GetChatResponse> => {
   const res = await api.get(`/api/v1/chat/${id}`)
   return res.data
 }

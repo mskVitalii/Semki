@@ -5,7 +5,6 @@ import {
   Card,
   Code,
   CopyButton,
-  Divider,
   Group,
   List,
   Mark,
@@ -22,8 +21,6 @@ import {
   IconBrain,
   IconCheck,
   IconCopy,
-  IconFileText,
-  IconInfoCircle,
   IconQuote,
   IconTerminal2,
 } from '@tabler/icons-react'
@@ -261,7 +258,7 @@ function Interpretation({ interpretation }: InterpretationType) {
   }
 
   const renderContent = () => {
-    return groupedContent.map((item) => {
+    return groupedContent.map((item, i) => {
       switch (item.type) {
         case 'h1':
           return (
@@ -351,7 +348,7 @@ function Interpretation({ interpretation }: InterpretationType) {
           )
         case 'unordered':
           return (
-            <List key={item.key} spacing="xs" size="md" className="mb-4!">
+            <List key={item.key ?? i} spacing="xs" size="md" className="mb-4!">
               {item.items.map((listItem: string, i: number) => (
                 <List.Item key={i}>{renderFormattedText(listItem)}</List.Item>
               ))}
@@ -360,7 +357,7 @@ function Interpretation({ interpretation }: InterpretationType) {
         case 'ordered':
           return (
             <List
-              key={item.key}
+              key={item.key ?? i}
               type="ordered"
               spacing="xs"
               size="md"
@@ -402,7 +399,7 @@ function Interpretation({ interpretation }: InterpretationType) {
   return (
     <Stack gap="lg" className="w-full">
       {/* Header */}
-      <Group justify="space-between" className="mb-2">
+      <Group justify="space-between" className="mb-2" mt="lg">
         <Group gap="xs">
           <ThemeIcon
             size="lg"
@@ -412,13 +409,20 @@ function Interpretation({ interpretation }: InterpretationType) {
           >
             <IconBrain size={20} />
           </ThemeIcon>
-          <Text size="xl" fw={700}>
+          <Text size="lg" className="text-slate-400!" fw={700}>
             AI suggestion
+          </Text>
+        </Group>
+
+        <Group justify="flex-end" className="mt-6!">
+          <Text size="xs" c="dimmed">
+            {new Date().toLocaleTimeString()}
           </Text>
         </Group>
       </Group>
 
       {/* Main Content Card */}
+
       <Card
         shadow="sm"
         padding="xl"
@@ -429,46 +433,10 @@ function Interpretation({ interpretation }: InterpretationType) {
         {/* Decorative gradient background */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-blue-500/5 to-purple-500/5 rounded-full blur-3xl" />
 
-        {/* Main Answer Content */}
-        <Group gap="xs" className="mb-4!">
-          <IconFileText size={20} className="text-gray-600" />
-          <Text size="sm" c="dimmed" tt="uppercase" fw={600}>
-            Response
-          </Text>
-          <CopyButton value={interpretation}>
-            {({ copied, copy }) => (
-              <Tooltip label={copied ? 'Copied!' : 'Copy entire answer'}>
-                <ActionIcon
-                  color={copied ? 'teal' : 'gray'}
-                  onClick={copy}
-                  variant="subtle"
-                  size="sm"
-                  className="ml-auto"
-                >
-                  {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
-                </ActionIcon>
-              </Tooltip>
-            )}
-          </CopyButton>
-        </Group>
-
-        <Divider className="mb-4!" />
-
         {/* Rendered Content */}
         <Box className="prose prose-lg max-w-none">{renderContent()}</Box>
 
         {/* Footer Info */}
-        <Group justify="space-between" className="mt-6!">
-          <Group gap="xs">
-            <IconInfoCircle size={16} className="text-gray-500" />
-            <Text size="xs" c="dimmed">
-              Response length: {interpretation.length} characters
-            </Text>
-          </Group>
-          <Text size="xs" c="dimmed">
-            Processed at {new Date().toLocaleTimeString()}
-          </Text>
-        </Group>
       </Card>
     </Stack>
   )

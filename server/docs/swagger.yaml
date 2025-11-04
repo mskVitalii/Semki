@@ -32,9 +32,7 @@ definitions:
         type: integer
       id:
         type: string
-      message:
-        type: string
-      response:
+      title:
         type: string
     type: object
   dto.CreateLevelRequest:
@@ -1113,7 +1111,7 @@ paths:
       - BearerAuth: []
       summary: Semantic user search
       tags:
-      - chat
+      - chats
   /api/v1/user:
     post:
       consumes:

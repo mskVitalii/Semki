@@ -1,3 +1,4 @@
+import type { SearchRequest } from '@/common/types'
 import { Button, Group, Loader, Paper, TextInput, Tooltip } from '@mantine/core'
 import { IconPlayerStop, IconSend } from '@tabler/icons-react'
 import { useState } from 'react'
@@ -8,10 +9,11 @@ type SearchFormProps = {
   onSearch: (query: string) => void
   onCancel: () => void
   isLoading: boolean
+  req?: SearchRequest
 }
 
-function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
-  const [question, setQuestion] = useState<string>('')
+function SearchForm({ req, onSearch, onCancel, isLoading }: SearchFormProps) {
+  const [question, setQuestion] = useState<string>(req?.q ?? '')
   const handleKeyPress = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ): void => {
@@ -28,8 +30,8 @@ function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
           className="flex-1"
           label="Who should I find?"
           placeholder={getRandomPlaceholder()}
-          rightSectionWidth={130}
-          rightSection={<>{isLoading && <Loader size="xs" />}</>}
+          // rightSectionWidth={130}
+          rightSection={<>{isLoading && <Loader c={'green'} size="xs" />}</>}
           mt="md"
           variant="unstyled"
           value={question}

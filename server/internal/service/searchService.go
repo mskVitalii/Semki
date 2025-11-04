@@ -49,7 +49,7 @@ func NewSearchService(
 //	@Summary		Semantic user search
 //	@Description	Performs a semantic search for users using text embeddings and optional filters.
 //						Results are streamed one by one with optional AI-generated descriptions.
-//	@Tags			chat
+//	@Tags			chats
 //	@Security		BearerAuth
 //	@Accept			json
 //	@Produce		text/event-stream

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/sashabaranov/go-openai"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"semki/internal/adapter/mongo"
@@ -57,8 +58,8 @@ func (s *chatService) CreateChat(c *gin.Context) {
 		Title:  req.Message,
 		Messages: []model.Message{
 			{
-				Role:      "user",
-				Content:   bson.M{"Question": req.Message},
+				Role:      openai.ChatMessageRoleUser,
+				Content:   bson.M{"title": req.Message},
 				Timestamp: time.Now(),
 			},
 		},
@@ -71,8 +72,7 @@ func (s *chatService) CreateChat(c *gin.Context) {
 
 	response := dto.CreateChatResponse{
 		ID:        chat.ID.Hex(),
-		Message:   req.Message,
-		Response:  "AI response here",
+		Title:     chat.Title,
 		CreatedAt: chat.CreatedAt.Unix(),
 	}
 
