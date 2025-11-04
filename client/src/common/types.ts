@@ -1,3 +1,36 @@
+// #region Chat
+export interface CreateChatRequest {
+  message: string
+}
+
+export interface CreateChatResponse {
+  id: string
+  message: string
+  response: string
+  created_at: number
+}
+
+export interface GetChatResponse {
+  id: string
+  messages: Array<Record<string, unknown>>
+  created_at: number
+  updated_at: number
+}
+
+export interface ChatHistoryItem {
+  id: string
+  title: string
+  created_at: number
+  updated_at: number
+}
+
+export interface GetUserHistoryResponse {
+  chats: ChatHistoryItem[]
+  nextCursor?: string
+}
+
+// #endregion
+
 // #region /search
 export type SearchRequest = {
   q: string

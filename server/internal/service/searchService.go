@@ -211,7 +211,7 @@ func (s *searchService) Search(c *gin.Context) {
 // Formats: ?teams=team1,team2 или ?teams[]=team1&teams[]=team2
 func parseSearchRequest(ctx *gin.Context, req *dto.SearchRequest) error {
 	req.Query = ctx.Query("q")
-	req.ChatId = ctx.Query("chat_id")
+	req.ChatId = ctx.Query("chatId")
 
 	// Teams
 	if teams := ctx.Query("teams"); teams != "" {

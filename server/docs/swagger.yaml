@@ -6,7 +6,7 @@ definitions:
         type: integer
       id:
         type: string
-      question:
+      title:
         type: string
       updated_at:
         type: integer

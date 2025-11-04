@@ -1778,7 +1778,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "question": {
+                "title": {
                     "type": "string"
                 },
                 "updated_at": {

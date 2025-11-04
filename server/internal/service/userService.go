@@ -296,7 +296,7 @@ func (s *userService) GetUser(c *gin.Context) {
 		c.JSON(http.StatusForbidden, dto.UnauthorizedResponse{Message: "Forbidden"})
 		return
 	}
-	telemetry.Log.Info(fmt.Sprintf("GetUser -> userID%s", userID))
+	telemetry.Log.Info(fmt.Sprintf("GetUser -> userID %s", userID))
 
 	ctx := c.Request.Context()
 	user, err := s.userRepo.GetUserByID(ctx, paramObjectID)

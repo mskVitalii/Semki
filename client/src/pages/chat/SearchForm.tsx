@@ -11,7 +11,7 @@ type SearchFormProps = {
 }
 
 function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
-  const [question, setQuestion] = useState<string>()
+  const [question, setQuestion] = useState<string>('')
   const handleKeyPress = (
     event: React.KeyboardEvent<HTMLInputElement>,
   ): void => {
@@ -26,7 +26,7 @@ function SearchForm({ onSearch, onCancel, isLoading }: SearchFormProps) {
       <Group align="flex-end">
         <TextInput
           className="flex-1"
-          label="Which people to find?"
+          label="Who should I find?"
           placeholder={getRandomPlaceholder()}
           rightSectionWidth={130}
           rightSection={<>{isLoading && <Loader size="xs" />}</>}
@@ -72,9 +72,9 @@ const placeholders = [
   'Find me a partner to eat pasta on lunch! 🍝(˶ᐢ ᵕ ᐢ˶)',
   'Find the right person to own it! 💼( ^_^)',
   'Find the White Rabbit >>> ૮꒰ ˶• ༝ •˶꒱ა ♡',
-  'Find your Morty. Wubba Lubba Dub Dub! (☞0_0)☞',
-  'Wake up, Samurai. You have contacts to talk 🗡️(⌐■_■)',
-  'Find friends. Say hello to your little friend! 🔫(｀ω´)',
+  'Find my Morty. Wubba Lubba Dub Dub! (☞0_0)☞',
+  'Wake up, Samurai. I have contacts to talk 🗡️(⌐■_■)',
+  'Find friends. Say hello to my little friend! 🔫(｀ω´)',
   'Find John Connor 🤖( •_•)>⌐■-■',
   "Find who's breathtaking 💫(˶ˊᵕˋ˵)",
   'If the cake is a lie, find the baker 🍰(´･ω･`)',

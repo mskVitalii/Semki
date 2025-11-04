@@ -158,9 +158,9 @@ func (s *chatService) GetUserHistory(c *gin.Context) {
 	}
 	userID := userClaims.(*jwtUtils.UserClaims).ID
 
-	// Получаем параметры пагинации
+	// Pagination
 	cursor := c.Query("cursor")
-	limit := 20 // по умолчанию
+	limit := 20
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 100 {
 			limit = parsedLimit
@@ -177,7 +177,7 @@ func (s *chatService) GetUserHistory(c *gin.Context) {
 	for _, chat := range chatsData {
 		chats = append(chats, dto.ChatHistoryItem{
 			ID:        chat.ID.Hex(),
-			Question:  chat.Title,
+			Title:     chat.Title,
 			CreatedAt: chat.CreatedAt.Unix(),
 			UpdatedAt: chat.UpdatedAt.Unix(),
 		})
@@ -185,6 +185,6 @@ func (s *chatService) GetUserHistory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, dto.GetUserHistoryResponse{
 		Chats:      chats,
-		NextCursor: nextCursor, // добавь это поле в DTO
+		NextCursor: nextCursor,
 	})
 }

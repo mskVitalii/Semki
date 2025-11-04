@@ -25,7 +25,7 @@ type GetUserHistoryResponse struct {
 
 type ChatHistoryItem struct {
 	ID        string `json:"id"`
-	Question  string `json:"question"`
+	Title     string `json:"title"`
 	CreatedAt int64  `json:"created_at"`
 	UpdatedAt int64  `json:"updated_at"`
 }

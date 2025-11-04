@@ -85,7 +85,7 @@ func (r *chatRepository) GetChatsByUserID(ctx context.Context, userID primitive.
 }
 
 func (r *chatRepository) GetChatsByUserIDWithCursor(ctx context.Context, userID primitive.ObjectID, cursor string, limit int) ([]model.Chat, string, error) {
-	filter := bson.M{"user_id": userID}
+	filter := bson.M{"userId": userID}
 
 	if cursor != "" {
 		cursorObjectID, err := primitive.ObjectIDFromHex(cursor)

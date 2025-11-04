@@ -1,5 +1,8 @@
+import { fetchChatById } from '@/api/chat'
+import { useCreateChat } from '@/common/hooks/useCreateChat'
 import { MainLayout } from '@/common/SidebarLayout'
 import type { SearchResult } from '@/common/types'
+import { useAuthStore } from '@/stores/authStore'
 import {
   ActionIcon,
   Alert,
@@ -15,15 +18,23 @@ import {
 } from '@mantine/core'
 import { useListState } from '@mantine/hooks'
 import { IconAlertCircle, IconRefresh } from '@tabler/icons-react'
+import { useQuery } from '@tanstack/react-query'
 import React, { useCallback, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 
+// TODO: button to retry if no answer in chat & no generation in progress
+
+// TODO: request to start new chat
+
 const Chat: React.FC = () => {
   const [users, usersHandlers] = useListState<SearchResult>([])
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const access_token = useAuthStore((state) => state.accessToken)
   const [error, setError] = useState<string>('')
   const abortControllerRef = useRef<AbortController | null>(null)
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const { mutateAsync: createChat } = useCreateChat()
 
   const parseSSELine = (line: string): SearchResult | null => {
     try {
@@ -42,86 +53,77 @@ const Chat: React.FC = () => {
     setError('')
   }, [usersHandlers])
 
-  // TODO: request to get chat
-  // TODO: button to retry if no answer in chat & no generation in progress
+  const { chatId } = useParams<{ chatId?: string }>()
+  // console.log('chatId', chatId)
+  const { data: chat, isError } = useQuery({
+    queryKey: ['chat', chatId],
+    queryFn: () => fetchChatById(chatId!),
+    enabled: !!chatId,
+  })
+  console.log('current chat ', chat, isError)
 
   const handleStream = useCallback(
-    async (question: string) => {
+    async (question: string, chatId: string) => {
       handleClear()
       setIsLoading(true)
-
-      let eventSource: EventSource | null = null
-      let isManualClose = false
+      const controller = new AbortController()
+      abortControllerRef.current = controller
 
       try {
         const encodedQuestion = encodeURIComponent(question)
-        console.log(`request to ${import.meta.env.VITE_API_URL}/api/v1/search`)
-        const endpoint = `${import.meta.env.VITE_API_URL}/api/v1/search`
-        const url = `${endpoint}?question=${encodedQuestion}`
-
-        eventSource = new EventSource(url)
-
-        eventSource.onopen = () => {
-          console.log('EventSource connection opened')
-        }
-
-        eventSource.onmessage = (event) => {
-          if (event.data === '[DONE]' || event.data.includes('[DONE]')) {
-            console.log('Stream completed successfully')
-            eventSource?.close()
-            setIsLoading(false)
-            return
-          }
-
-          const parsed = parseSSELine(event.data)
-
-          if (parsed) {
-            usersHandlers.append(parsed)
-          }
-        }
-
-        eventSource.onerror = (error) => {
-          console.error('EventSource error:', error)
-          if (isManualClose) eventSource?.close()
-
-          if (eventSource?.readyState === EventSource.CLOSED) {
-            console.log('Connection closed normally')
-          } else if (eventSource?.readyState === EventSource.CONNECTING) {
-            setError('Failed to establish connection')
-          } else {
-            setError('Connection error occurred')
-          }
-
-          setIsLoading(false)
-          eventSource?.close()
-        }
-
-        abortControllerRef.current = {
-          abort: () => {
-            isManualClose = true
-            eventSource?.close()
-            setError('Request was cancelled')
-            setIsLoading(false)
+        const url = `${import.meta.env.VITE_API_URL}/api/v1/search?question=${encodedQuestion}`
+        const response = await fetch(
+          url +
+            new URLSearchParams({
+              q: encodedQuestion,
+              chatId,
+            }).toString(),
+          {
+            headers: {
+              Authorization: `Bearer ${access_token}`,
+            },
+            signal: controller.signal,
           },
-        } as AbortController
+        )
+
+        if (!response.body) throw new Error('No response body')
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+
+        let done = false
+        while (!done) {
+          const { value, done: readerDone } = await reader.read()
+          done = readerDone
+          if (value) {
+            const chunk = decoder.decode(value, { stream: true })
+            chunk.split('\n').forEach((line) => {
+              if (line.trim() === '[DONE]') {
+                done = true
+                return
+              }
+              const parsed = parseSSELine(line)
+              if (parsed) usersHandlers.append(parsed)
+            })
+          }
+        }
+
+        setIsLoading(false)
       } catch (err) {
-        if (err instanceof Error) {
-          setError(`Error: ${err.message}`)
-          console.error('Stream error:', err)
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          setError('Request was cancelled')
+        } else if (err instanceof Error) {
+          setError(err.message)
+          console.error(err)
         } else {
-          setError('An unknown error occurred')
+          setError('Unknown error occurred')
         }
         setIsLoading(false)
-      }
-
-      return () => {
-        isManualClose = true
-        eventSource?.close()
-        setIsLoading(false)
+      } finally {
         abortControllerRef.current = null
       }
     },
-    [handleClear, usersHandlers],
+    [access_token, handleClear, usersHandlers],
   )
 
   const handleCancel = useCallback((): void => {
@@ -130,13 +132,16 @@ const Chat: React.FC = () => {
     abortControllerRef.current = null
   }, [])
 
-  const handleSubmit = (question: string): void => {
-    // TODO: create chat
+  const handleSubmit = async (question: string): Promise<void> => {
+    console.log(isLoading, !question.trim())
+    if (isLoading || !question.trim()) return
 
-    if (!isLoading && question.trim()) {
-      handleStream(question.trim())
-      console.log(question)
-    }
+    // Chat
+    const chat = await createChat({ message: question.trim() })
+    console.log('handleSubmit chat', chat)
+
+    // Search
+    await handleStream(question.trim(), chat.id)
   }
 
   return (

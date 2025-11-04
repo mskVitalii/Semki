@@ -173,10 +173,49 @@ func identity(c *gin.Context) interface{} {
 
 // region Authorization
 
-func authorization(_ *gin.Context, _ any) bool {
-	// TODO: check organization by gin.Context & data
+func authorization(c *gin.Context, data any) bool {
+	user, ok := data.(*UserClaims)
+	if !ok || user == nil {
+		return false
+	}
+
+	if user.OrganizationRole == model.OrganizationRoles.ADMIN || user.OrganizationRole == model.OrganizationRoles.OWNER {
+		return true
+	}
+
+	adminRoutes := map[string]map[string]struct{}{
+		"POST": {
+			"/api/v1/user/invite":            {},
+			"/api/v1/user/:id/restore":       {},
+			"/api/v1/organization/teams":     {},
+			"/api/v1/organization/levels":    {},
+			"/api/v1/organization/locations": {},
+		},
+		"DELETE": {
+			"/api/v1/user/:id":                           {},
+			"/api/v1/organization":                       {},
+			"/api/v1/organization/teams/:teamId":         {},
+			"/api/v1/organization/levels/:levelId":       {},
+			"/api/v1/organization/locations/:locationId": {},
+		},
+		"PATCH": {
+			"/api/v1/organization": {},
+		},
+		"PUT": {
+			"/api/v1/organization/teams/:teamId":   {},
+			"/api/v1/organization/levels/:levelId": {},
+		},
+	}
+
+	method := c.Request.Method
+	path := c.FullPath()
+	if _routes, ok := adminRoutes[method]; ok {
+		if _, found := _routes[path]; found {
+			return false
+		}
+	}
+
 	return true
-	//return data != nil
 }
 
 func unauthorized(c *gin.Context, code int, message string) {
