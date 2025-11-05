@@ -305,15 +305,18 @@ const Chat: React.FC = () => {
               {/* Found Users List */}
               <div className="mb-4">
                 <Stack gap="md">
-                  {sortedUsers.map((userRes) => (
-                    <UserResultCard data={userRes} key={userRes.user?._id} />
+                  {sortedUsers.map((userRes, i) => (
+                    <UserResultCard
+                      data={userRes}
+                      key={userRes.user?._id ?? i}
+                    />
                   ))}
                 </Stack>
               </div>
             </div>
           )}
 
-          {sortedUsers.length === 0 && !isLoading && (
+          {sortedUsers.length === 1 && !isLoading && (
             <div className="flex-1 flex items-center justify-center">
               <Title order={3} c="dimmed">
                 No results found. Try adjusting your search criteria.

@@ -9,9 +9,9 @@ const (
 )
 
 type IQdrantController interface {
-	ReIndex(c *gin.Context)
+	ReIndexReq(c *gin.Context)
 }
 
 func RegisterQdrantRoutes(g *gin.RouterGroup, securityHandler gin.HandlerFunc, service IQdrantController) {
-	g.POST(ReIndex, securityHandler, service.ReIndex)
+	g.POST(ReIndex, securityHandler, service.ReIndexReq)
 }

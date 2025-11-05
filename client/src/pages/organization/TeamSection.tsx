@@ -2,6 +2,7 @@ import { type Team } from '@/common/types'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import { Button, Collapse, Group, Stack, Title } from '@mantine/core'
 import { useDisclosure, useListState } from '@mantine/hooks'
+import { useEffect } from 'react'
 import { TeamCard } from './TeamCard'
 
 export function TeamSection({ disabled }: { disabled?: boolean }) {
@@ -11,6 +12,13 @@ export function TeamSection({ disabled }: { disabled?: boolean }) {
     organization?.semantic.teams ?? [],
   )
 
+  useEffect(() => {
+    if (!organization) return
+    if (!organization.semantic.teams) return
+    handlers.setState(organization?.semantic.teams ?? [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [organization?.semantic.teams])
+
   const handleChange = (idx: number, updated: Team) => {
     handlers.setItem(idx, updated)
   }
@@ -18,7 +26,8 @@ export function TeamSection({ disabled }: { disabled?: boolean }) {
     handlers.append({ name: '', description: '' })
   }
   const deleteTeam = (idx: number) => {
-    handlers.remove(idx)
+    console.log('handlers.remove', idx)
+    // handlers.remove(idx)
   }
 
   return (

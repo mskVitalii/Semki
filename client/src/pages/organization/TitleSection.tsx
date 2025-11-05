@@ -44,6 +44,7 @@ export function TitleSection({ disabled }: { disabled?: boolean }) {
       <TextInput
         label="Title"
         value={title}
+        styles={{ label: { marginBottom: '0.75rem' } }}
         disabled={disabled}
         onChange={(e) => setTitle(e.currentTarget.value)}
         radius="md"

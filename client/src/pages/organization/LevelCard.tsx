@@ -20,7 +20,9 @@ export function LevelCard({
 }) {
   const queryClient = useQueryClient()
 
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [status, setStatus] = useState<'idle' | 'save' | 'saved' | 'delete'>(
+    'idle',
+  )
 
   const mutation = useMutation({
     mutationFn: ({
@@ -31,17 +33,21 @@ export function LevelCard({
       method: 'save' | 'delete'
     }) => {
       if (method === 'delete') {
-        return api.delete(`/api/v1/organization/teams/${lvl.id}`)
+        return api.delete(`/api/v1/organization/levels/${lvl.id}`)
       }
 
       return lvl.id
         ? api.put(`/api/v1/organization/levels/${lvl.id}`, lvl)
         : api.post(`/api/v1/organization/levels`, lvl)
     },
-    onMutate: () => setStatus('saving'),
-    onSuccess: () => {
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 1500)
+    onMutate: ({ method }) => setStatus(method),
+    onSuccess: (_, { method }) => {
+      if (method !== 'delete') {
+        setStatus('saved')
+        setTimeout(() => setStatus('idle'), 1500)
+      } else {
+        setStatus('idle')
+      }
       queryClient.invalidateQueries({
         queryKey: ['organization'],
       })
@@ -105,9 +111,9 @@ export function LevelCard({
           styles={{ label: { marginBottom: '0.75rem' } }}
           onChange={(e) => handleChange('description', e.currentTarget.value)}
         />
-        {status !== 'idle' && (
+        {status !== 'idle' && status !== 'delete' && (
           <div className="text-sm text-gray-500">
-            {status === 'saving' ? 'Saving…' : 'Saved'}
+            {status === 'save' ? 'Saving…' : 'Saved'}
           </div>
         )}
       </Stack>

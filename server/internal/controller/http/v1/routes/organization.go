@@ -30,6 +30,8 @@ type IOrganizationService interface {
 	DeleteLocation(c *gin.Context)
 
 	//UpdateOrganization(c *gin.Context)
+
+	InsertMock(c *gin.Context)
 }
 
 func RegisterOrganizationRoutes(g *gin.RouterGroup, organizationService IOrganizationService, securityHandler gin.HandlerFunc) {
@@ -53,4 +55,7 @@ func RegisterOrganizationRoutes(g *gin.RouterGroup, organizationService IOrganiz
 	// Locations
 	g.POST(organizationLocations, securityHandler, organizationService.CreateLocation)
 	g.DELETE(organizationLocations+"/:locationId", securityHandler, organizationService.DeleteLocation)
+
+	// TODO: Add to authorization
+	g.POST(organizationCRUD+"/insert-mock", securityHandler, organizationService.InsertMock)
 }

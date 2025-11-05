@@ -141,6 +141,7 @@ export default function Profile() {
         shadow="lg"
         padding="xl"
         radius="md"
+        m="xl"
         className="min-h-screen w-full p-4 overflow-auto!"
       >
         <Stack>

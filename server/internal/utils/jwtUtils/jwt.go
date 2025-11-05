@@ -185,12 +185,13 @@ func authorization(c *gin.Context, data any) bool {
 
 	adminRoutes := map[string]map[string]struct{}{
 		"POST": {
-			"/api/v1/user/invite":            {},
-			"/api/v1/user/:id/restore":       {},
-			"/api/v1/organization/teams":     {},
-			"/api/v1/organization/levels":    {},
-			"/api/v1/organization/locations": {},
-			"/api/v1/reindex":                {},
+			"/api/v1/user/invite":              {},
+			"/api/v1/user/:id/restore":         {},
+			"/api/v1/organization/teams":       {},
+			"/api/v1/organization/levels":      {},
+			"/api/v1/organization/locations":   {},
+			"/api/v1/reindex":                  {},
+			"/api/v1/organization/insert-mock": {},
 		},
 		"DELETE": {
 			"/api/v1/user/:id":                           {},

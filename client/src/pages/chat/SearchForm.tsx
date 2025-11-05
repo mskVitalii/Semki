@@ -154,7 +154,7 @@ const placeholders = [
   'Find the right person to own it! 💼( ^_^)',
   'Find the White Rabbit >>> ૮꒰ ˶• ༝ •˶꒱ა ♡',
   'Find my Morty. Wubba Lubba Dub Dub! (☞0_0)☞',
-  'Wake up, Samurai. I have contacts to talk 🗡️(⌐■_■)',
+  'Wake up, Samurai. We have contacts to talk 🗡️(⌐■_■)',
 ]
 
 function getRandomPlaceholder() {

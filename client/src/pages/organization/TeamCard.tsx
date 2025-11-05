@@ -18,7 +18,9 @@ export function TeamCard({
   onDelete: () => void
   disabled?: boolean
 }) {
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [status, setStatus] = useState<'idle' | 'save' | 'saved' | 'delete'>(
+    'idle',
+  )
   const queryClient = useQueryClient()
 
   const mutation = useMutation({
@@ -37,11 +39,17 @@ export function TeamCard({
         ? api.put(`/api/v1/organization/teams/${team.id}`, team)
         : api.post(`/api/v1/organization/teams`, team)
     },
-    onMutate: () => setStatus('saving'),
-    onSuccess: () => {
-      setStatus('saved')
-      setTimeout(() => setStatus('idle'), 1500)
-      queryClient.invalidateQueries({ queryKey: ['organization'] })
+    onMutate: ({ method }) => setStatus(method),
+    onSuccess: (_, { method }) => {
+      if (method !== 'delete') {
+        setStatus('saved')
+        setTimeout(() => setStatus('idle'), 1500)
+      } else {
+        setStatus('idle')
+      }
+      queryClient.invalidateQueries({
+        queryKey: ['organization'],
+      })
     },
     onError: () => {
       notifications.show({
@@ -101,9 +109,9 @@ export function TeamCard({
           styles={{ label: { marginBottom: '0.75rem' } }}
           onChange={(e) => handleChange('description', e.currentTarget.value)}
         />
-        {status !== 'idle' && (
+        {status !== 'idle' && status !== 'delete' && (
           <div className="text-sm text-gray-500">
-            {status === 'saving' ? 'Saving…' : 'Saved'}
+            {status === 'save' ? 'Saving…' : 'Saved'}
           </div>
         )}
       </Stack>

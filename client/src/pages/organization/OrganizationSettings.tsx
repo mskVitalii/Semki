@@ -12,6 +12,7 @@ import {
 } from '@mantine/core'
 import { LevelSection } from './LevelsSection'
 import { LocationSection } from './LocationSection'
+import OrganizationInsertMockButton from './OrganizationInsertMockButton'
 import { TeamSection } from './TeamSection'
 import { TitleSection } from './TitleSection'
 
@@ -29,8 +30,13 @@ export function OrganizationSettings() {
   return (
     <Container className="py-12!">
       <Paper className="p-8! max-w-3xl! mx-auto! space-y-8!">
-        <Group className="justify-between items-center">
+        <Group
+          justify="space-between"
+          className="items-baseline! md:flex-row! flex-col!"
+          grow
+        >
           <Title order={2}>Organization Settings</Title>
+          <OrganizationInsertMockButton />
         </Group>
 
         <Stack gap="md">

@@ -2,6 +2,7 @@ import { type Level } from '@/common/types'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import { Button, Collapse, Group, Stack, Title } from '@mantine/core'
 import { useDisclosure, useListState } from '@mantine/hooks'
+import { useEffect } from 'react'
 import { LevelCard } from './LevelCard'
 
 export function LevelSection({ disabled }: { disabled?: boolean }) {
@@ -12,6 +13,13 @@ export function LevelSection({ disabled }: { disabled?: boolean }) {
     organization?.semantic.levels ?? [],
   )
 
+  useEffect(() => {
+    if (!organization) return
+    if (!organization.semantic.levels) return
+    handlers.setState(organization?.semantic.levels ?? [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organization?.semantic.levels])
+
   const handleChange = (idx: number, updated: Level) => {
     handlers.setItem(idx, updated)
   }
@@ -20,7 +28,8 @@ export function LevelSection({ disabled }: { disabled?: boolean }) {
     handlers.append({ name: '', description: '' })
   }
   const deleteLevel = (idx: number) => {
-    handlers.remove(idx)
+    console.log('handlers.remove', idx)
+    // handlers.remove(idx)
   }
 
   return (
