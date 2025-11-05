@@ -1,13 +1,25 @@
 import type { SearchRequest } from '@/common/types'
-import { Button, Group, Loader, Paper, TextInput, Tooltip } from '@mantine/core'
+import { useOrganizationStore } from '@/stores/organizationStore'
+import {
+  Button,
+  Group,
+  Loader,
+  MultiSelect,
+  Paper,
+  Stack,
+  TextInput,
+  Tooltip,
+} from '@mantine/core'
+import { useForm } from '@mantine/form'
 import { IconPlayerStop, IconSend } from '@tabler/icons-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 
-// TODO: filters
-
 type SearchFormProps = {
-  onSearch: (query: string) => void
+  onSearch: (
+    query: string,
+    filters?: Omit<SearchRequest, 'q' | 'limit'>,
+  ) => void
   onCancel: () => void
   isLoading: boolean
   req?: SearchRequest
@@ -15,92 +27,141 @@ type SearchFormProps = {
 
 function SearchForm({ req, onSearch, onCancel, isLoading }: SearchFormProps) {
   const { chatId } = useParams<{ chatId?: string }>()
+  const organization = useOrganizationStore((s) => s.organization)
+  const qPlaceholder = useRef(getRandomPlaceholder())
 
-  const handleClear = useCallback((): void => {
-    setQuestion('')
-  }, [])
+  const form = useForm<SearchRequest>({
+    initialValues: {
+      q: req?.q ?? '',
+      teams: req?.teams ?? [],
+      levels: req?.levels ?? [],
+      locations: req?.locations ?? [],
+      limit: req?.limit ?? 10,
+    },
+  })
 
   useEffect(() => {
-    handleClear()
-  }, [handleClear, chatId])
+    form.setValues({
+      q: '',
+      teams: [],
+      levels: [],
+      locations: [],
+      limit: 10,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId])
 
-  const [question, setQuestion] = useState<string>(req?.q ?? '')
-  const handleKeyPress = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-  ): void => {
-    if (event.key === 'Enter' && !event.shiftKey && question?.trim()) {
-      event.preventDefault()
-      onSearch(question.trim())
-    }
+  const handleSubmit = (values: SearchRequest) => {
+    if (!values.q.trim()) return
+    onSearch(values.q.trim(), {
+      teams: values.teams,
+      levels: values.levels,
+      locations: values.locations,
+    })
   }
+  if (!organization)
+    return (
+      <div className="flex-1 flex items-center justify-center h-full">
+        <Loader color="green" />
+      </div>
+    )
 
   return (
     <Paper p="md" radius="md" withBorder className="bg-gray-50">
-      <Group align="flex-end">
-        <TextInput
-          className="flex-1"
-          label="Who should I find?"
-          placeholder={getRandomPlaceholder()}
-          // rightSectionWidth={130}
-          rightSection={<>{isLoading && <Loader c={'green'} size="xs" />}</>}
-          mt="md"
-          variant="unstyled"
-          value={question}
-          onChange={(e) => setQuestion(e.currentTarget.value)}
-          onKeyDown={handleKeyPress}
-          disabled={isLoading}
-          size="md"
-          styles={{ label: { marginBottom: '0.75rem' } }}
-        />
-        {isLoading ? (
-          <Tooltip label="Stop streaming">
-            <Button
-              onClick={onCancel}
-              color="red"
-              leftSection={<IconPlayerStop size={18} />}
-              size="md"
-            >
-              Stop
-            </Button>
-          </Tooltip>
-        ) : (
-          <Tooltip label="Send question">
-            <Button
-              onClick={() => question?.trim() && onSearch(question)}
-              disabled={!question?.trim()}
-              leftSection={<IconSend size={18} />}
-              size="md"
-              color="green"
-            >
-              Send
-            </Button>
-          </Tooltip>
-        )}
-      </Group>
+      <form onSubmit={form.onSubmit(handleSubmit)}>
+        <Stack gap="md">
+          <TextInput
+            label="Who should I find?"
+            placeholder={qPlaceholder.current}
+            rightSection={isLoading && <Loader c="green" size="xs" />}
+            variant="unstyled"
+            classNames={{
+              label: 'text-2xl!',
+            }}
+            size="lg"
+            {...form.getInputProps('q')}
+          />
+
+          <Group align="flex-start" gap="md">
+            <Group grow align="flex-start">
+              <MultiSelect
+                w={'100%'}
+                placeholder="Select teams"
+                data={organization.semantic.teams.map((t) => ({
+                  value: t.id ?? t.name,
+                  label: t.name,
+                }))}
+                searchable
+                {...form.getInputProps('teams')}
+              />
+            </Group>
+            <Group grow align="flex-start">
+              <MultiSelect
+                placeholder="Select levels"
+                data={organization.semantic.levels.map((l) => ({
+                  value: l.id ?? l.name,
+                  label: l.name,
+                }))}
+                searchable
+                {...form.getInputProps('levels')}
+              />
+              <MultiSelect
+                placeholder="Select locations"
+                data={organization.semantic.locations.map((l) => ({
+                  value: l.name,
+                  label: l.name,
+                }))}
+                searchable
+                {...form.getInputProps('locations')}
+              />
+            </Group>
+          </Group>
+
+          <Group justify="flex-end">
+            {isLoading ? (
+              <Tooltip label="Stop streaming">
+                <Button
+                  onClick={onCancel}
+                  color="red"
+                  leftSection={<IconPlayerStop size={18} />}
+                  size="md"
+                  w="100%"
+                >
+                  Stop
+                </Button>
+              </Tooltip>
+            ) : (
+              <Tooltip label="Send question">
+                <Button
+                  w="100%"
+                  type="submit"
+                  disabled={!form.values.q.trim()}
+                  leftSection={<IconSend size={18} />}
+                  size="md"
+                  color="green"
+                >
+                  Search
+                </Button>
+              </Tooltip>
+            )}
+          </Group>
+        </Stack>
+      </form>
     </Paper>
   )
 }
 
-//#region Placeholders
 const placeholders = [
   'Find me a partner to eat pasta on lunch! 🍝(˶ᐢ ᵕ ᐢ˶)',
   'Find the right person to own it! 💼( ^_^)',
   'Find the White Rabbit >>> ૮꒰ ˶• ༝ •˶꒱ა ♡',
   'Find my Morty. Wubba Lubba Dub Dub! (☞0_0)☞',
   'Wake up, Samurai. I have contacts to talk 🗡️(⌐■_■)',
-  'Find friends. Say hello to my little friend! 🔫(｀ω´)',
-  'Find John Connor 🤖( •_•)>⌐■-■',
-  "Find who's breathtaking 💫(˶ˊᵕˋ˵)",
-  'If the cake is a lie, find the baker 🍰(´･ω･`)',
-  'Find the detonator 🃏(¬‿¬)',
-  'Search the infinity and beyond! 🚀(•̀ᴗ•́)و',
-  'Find Gandalf before it’s too late 🧙‍♂️(╯°□°）╯︵ ┻━┻',
 ]
 
 function getRandomPlaceholder() {
   const index = Math.floor(Math.random() * placeholders.length)
   return placeholders[index]
 }
-//#endregion
 
 export default SearchForm

@@ -1,26 +1,9 @@
-import { UserStatuses, type SearchResult } from '@/common/types'
-import { useOrganizationStore } from '@/stores/organizationStore'
-import {
-  Anchor,
-  Badge,
-  Button,
-  Group,
-  Paper,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core'
-import {
-  IconBrandSlack,
-  IconBrandTelegram,
-  IconBrandWhatsapp,
-  IconHash,
-  IconMail,
-  IconMapPin,
-  IconPhone,
-} from '@tabler/icons-react'
-import React, { useMemo } from 'react'
+import { type SearchResult } from '@/common/types'
+import UserBadges from '@/common/UserBadges'
+import UserContacts from '@/common/UserContacts'
+import { Anchor, Group, Paper, Stack, Text, Title } from '@mantine/core'
+import { IconHash } from '@tabler/icons-react'
+import React from 'react'
 import Interpretation from './Interpretation'
 
 type UserResultCardProps = {
@@ -29,58 +12,10 @@ type UserResultCardProps = {
 
 function UserResultCard({ data }: UserResultCardProps) {
   const { user } = data
-  const { contact } = user
-  const organization = useOrganizationStore((s) => s.organization)
-  const level = useMemo(
-    () =>
-      organization?.semantic.levels.find((l) => l.id === user.semantic.level)
-        ?.name ?? user.semantic.level,
-    [organization?.semantic.levels, user.semantic.level],
-  )
-  const location = useMemo(
-    () =>
-      organization?.semantic.locations.find(
-        (l) => l.id === user.semantic.location,
-      )?.name ?? user.semantic.location,
-    [organization?.semantic.locations, user.semantic.location],
-  )
-
-  const contacts = [
-    {
-      key: 'telegram',
-      value: contact.telegram,
-      icon: IconBrandTelegram,
-      href: `https://t.me/${contact.telegram.replace('@', '')}`,
-    },
-    {
-      key: 'slack',
-      value: contact.slack,
-      icon: IconBrandSlack,
-      href: `https://slack.com/app_redirect?channel=${contact.slack}`,
-    },
-    {
-      key: 'email',
-      value: contact.email === '' ? user.email : contact.email,
-      icon: IconMail,
-      href: `mailto:${contact.email}`,
-    },
-    {
-      key: 'telephone',
-      value: contact.telephone,
-      icon: IconPhone,
-      href: `tel:${contact.telephone}`,
-    },
-    {
-      key: 'whatsapp',
-      value: contact.whatsapp,
-      icon: IconBrandWhatsapp,
-      href: `https://wa.me/${contact.whatsapp.replace('+', '')}`,
-    },
-  ].filter((c) => c.value)
 
   return (
     <Paper
-      key={data.user._id}
+      key={user._id}
       p="lg"
       radius="md"
       className="border border-slate-200 bg-slate-50"
@@ -89,20 +24,20 @@ function UserResultCard({ data }: UserResultCardProps) {
       <Stack gap="sm">
         {/* Question Header */}
         <Group justify="space-between" align="space-between" w={'100%'} grow>
-          <Anchor component="a" href={`/profile/${data.user._id}`} mt={5}>
+          <Anchor component="a" href={`/profile/${user._id}`} mt={5}>
             <Title
               order={2}
               size="md"
               fw={600}
               className="leading-relaxed text-2xl! decoration-green-500!"
             >
-              {data.user.name}
+              {user.name}
             </Title>
           </Anchor>
           <Group gap="xs" w={'min-content'} align="center" justify="flex-end">
             <IconHash className="w-3 h-3 text-slate-400" />
             <Text size="xs" c="dimmed" className="font-mono">
-              {data.user._id}
+              {user._id}
             </Text>
           </Group>
         </Group>
@@ -123,36 +58,10 @@ function UserResultCard({ data }: UserResultCardProps) {
           {user.semantic?.description}
         </Text>
 
-        <Group gap="xs" mt="xs">
-          {user.status == UserStatuses.DELETED && (
-            <Badge color="red">{UserStatuses.DELETED}</Badge>
-          )}
-          {level && <Badge color="blue">{level}</Badge>}
-          {location && (
-            <Badge leftSection={<IconMapPin size={12} />} color="green">
-              {location}
-            </Badge>
-          )}
-        </Group>
+        <UserBadges user={user} />
 
         <Interpretation interpretation={data.description} />
-        <Group gap="xs" mt="sm" wrap="wrap">
-          {contacts.map(({ key, icon: Icon, href }) => (
-            <Tooltip key={key} label={key}>
-              <Button
-                variant="light"
-                size="xs"
-                component="a"
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                leftSection={<Icon size={16} />}
-              >
-                {key}
-              </Button>
-            </Tooltip>
-          ))}
-        </Group>
+        <UserContacts contact={user.contact} />
       </Stack>
     </Paper>
   )

@@ -2,6 +2,7 @@
 import { api } from '@/api/client'
 import { MainLayout } from '@/common/SidebarLayout'
 import { type User } from '@/common/types'
+import UserBadges from '@/common/UserBadges'
 import { useAuthStore } from '@/stores/authStore'
 import { useOrganizationStore } from '@/stores/organizationStore'
 import {
@@ -21,6 +22,7 @@ import { notifications } from '@mantine/notifications'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import ProfileReadOnly from './ProfileReadOnly'
 
 function diffUser(a: User, b: User): Partial<User> {
   function compare(valA: any, valB: any): any {
@@ -131,6 +133,8 @@ export default function Profile() {
       </MainLayout>
     )
 
+  if (!isAdmin && userId !== currUserId) return <ProfileReadOnly user={user} />
+
   return (
     <MainLayout>
       <Card
@@ -143,6 +147,8 @@ export default function Profile() {
           <Group justify="space-between" mt="md">
             <Title order={2}>{form.values.name}</Title>
           </Group>
+          <UserBadges user={user} />
+
           <Divider label="General" m="lg" />
           <TextInput
             label="Email"

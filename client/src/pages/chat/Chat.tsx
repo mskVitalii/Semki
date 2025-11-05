@@ -8,6 +8,7 @@ import type {
   SearchResult,
 } from '@/common/types'
 import { useAuthStore } from '@/stores/authStore'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import { Alert, Anchor, Badge, Card, Group, Stack, Title } from '@mantine/core'
 import { useListState } from '@mantine/hooks'
 import { IconAlertCircle } from '@tabler/icons-react'
@@ -25,7 +26,6 @@ const Chat: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const { mutateAsync: createChat } = useCreateChat()
-  // TEMPORARY
   const [req, setReq] = useState<SearchRequest>()
 
   const handleClear = useCallback((): void => {
@@ -169,15 +169,41 @@ const Chat: React.FC = () => {
     [users],
   )
 
+  const organization = useOrganizationStore((s) => s.organization)
+
+  const badges = useMemo(() => {
+    if (!req || !organization) return []
+    const { teams, levels, locations } = organization.semantic
+
+    const selectedTeams =
+      req.teams
+        .map((id) => teams.find((t) => t.id === id)?.name)
+        .filter(Boolean) ?? []
+    const selectedLevels =
+      req.levels
+        .map((id) => levels.find((l) => l.id === id)?.name)
+        .filter(Boolean) ?? []
+    const selectedLocations =
+      req.locations
+        .map((id) => locations.find((l) => l.id === id)?.name)
+        .filter(Boolean) ?? []
+
+    return [
+      ...selectedTeams.map((name) => ({ name, color: 'violet' })),
+      ...selectedLevels.map((name) => ({ name, color: 'blue' })),
+      ...selectedLocations.map((name) => ({ name, color: 'green' })),
+    ]
+  }, [req, organization])
+
   return (
     <MainLayout>
       <Card
         shadow="lg"
         padding="xl"
         radius="md"
-        className="min-h-screen w-full p-4"
+        className={`min-h-screen ${sortedUsers.length === 0 ? 'h-full!' : ''} w-full p-4`}
       >
-        <Stack>
+        <Stack className="h-full" justify="space-between">
           {/* Header */}
           <Group justify="space-between" align="center">
             <Anchor
@@ -231,6 +257,14 @@ const Chat: React.FC = () => {
             <Title order={1} fw={900} className="text-5xl" mt={'lg'}>
               {req?.q ?? 'Response'}
             </Title>
+            <Group gap="xs" mt="xs" wrap="wrap">
+              {badges.map((b) => (
+                <Badge size="lg" key={b.name} color={b.color}>
+                  {b.name}
+                </Badge>
+              ))}
+            </Group>
+
             {isLoading && (
               <Badge color="blue" variant="dot" size="sm">
                 Streaming...
