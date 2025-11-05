@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/sashabaranov/go-openai"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -13,7 +12,6 @@ import (
 	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
-	"semki/pkg/telemetry"
 	"strconv"
 	"time"
 
@@ -59,11 +57,17 @@ func (s *chatService) CreateChat(c *gin.Context) {
 
 	chat := &model.Chat{
 		UserID: userID,
-		Title:  req.Message,
+		Title:  req.Query,
 		Messages: []model.Message{
 			{
-				Role:      openai.ChatMessageRoleUser,
-				Content:   bson.M{"title": req.Message},
+				Role: openai.ChatMessageRoleUser,
+				Content: bson.M{
+					"title":     req.Query,
+					"teams":     req.Teams,
+					"levels":    req.Levels,
+					"locations": req.Locations,
+					"limit":     req.Limit,
+				},
 				Timestamp: time.Now(),
 			},
 		},
@@ -77,6 +81,10 @@ func (s *chatService) CreateChat(c *gin.Context) {
 	response := dto.CreateChatResponse{
 		ID:        chat.ID.Hex(),
 		Title:     chat.Title,
+		Teams:     req.Teams,
+		Levels:    req.Levels,
+		Locations: req.Locations,
+		Limit:     req.Limit,
 		CreatedAt: chat.CreatedAt.Unix(),
 	}
 
@@ -160,12 +168,8 @@ func (s *chatService) GetChat(c *gin.Context) {
 	for _, msg := range chat.Messages {
 		content := make(map[string]interface{})
 		for k, v := range msg.Content {
-			telemetry.Log.Info(fmt.Sprintf("key: %s", k))
 			if k == "user" {
-				telemetry.Log.Info(fmt.Sprintf("%s", v))
 				if u, ok := userMap[v.(string)]; ok {
-					telemetry.Log.Info(fmt.Sprintf("Found userMap by %s", v.(string)))
-
 					content[k] = u
 				} else {
 					content[k] = v
@@ -175,7 +179,6 @@ func (s *chatService) GetChat(c *gin.Context) {
 			}
 		}
 		messages = append(messages, content)
-		telemetry.Log.Info(fmt.Sprintf("new Len: %d", len(messages)))
 	}
 
 	response := dto.GetChatResponse{

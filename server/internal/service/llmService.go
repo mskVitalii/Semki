@@ -23,7 +23,7 @@ func NewLLMService(openAIKey string) ILLMService {
 func (s *LLMService) DescribeUser(ctx context.Context, query string, org model.Organization, user model.User) (string, error) {
 	teamName := ""
 	levelName := ""
-	locationName := user.Semantic.Location
+	locationName := user.Semantic.Location.Hex()
 
 	for _, t := range org.Semantic.Teams {
 		if t.ID == user.Semantic.Team {
@@ -40,7 +40,7 @@ func (s *LLMService) DescribeUser(ctx context.Context, query string, org model.O
 	}
 
 	for _, loc := range org.Semantic.Locations {
-		if loc.Name == user.Semantic.Location {
+		if loc.ID == user.Semantic.Location {
 			locationName = loc.Name
 			break
 		}

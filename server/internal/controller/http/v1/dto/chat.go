@@ -1,13 +1,21 @@
 package dto
 
 type CreateChatRequest struct {
-	Message string `json:"message" binding:"required" example:"Who are you having lasagna with today and why?"`
+	Query     string   `json:"query" binding:"required" example:"Who are you having lasagna with today and why?"`
+	Teams     []string `json:"teams,omitempty"`
+	Levels    []string `json:"levels,omitempty"`
+	Locations []string `json:"locations,omitempty"`
+	Limit     uint64   `json:"limit,omitempty"`
 }
 
 type CreateChatResponse struct {
-	ID        string `json:"id"`
-	Title     string `bson:"title"`
-	CreatedAt int64  `json:"created_at"`
+	ID        string   `json:"id"`
+	Title     string   `bson:"title"`
+	Teams     []string `json:"teams,omitempty"`
+	Levels    []string `json:"levels,omitempty"`
+	Locations []string `json:"locations,omitempty"`
+	Limit     uint64   `json:"limit,omitempty"`
+	CreatedAt int64    `json:"created_at"`
 }
 
 type GetChatResponse struct {

@@ -53,18 +53,18 @@ const Chat: React.FC = () => {
     queryFn: () => fetchChatById(chatId!),
     enabled: !!chatId,
   })
-  // console.log('current chat ', chat, isError)
+  console.log('current chat ', chat, isError)
 
   useEffect(() => {
     if (!chat) return
     if (chat.messages.length === 0) return
-    const q = (chat.messages[0] as unknown as CreateChatResponse).title
+    const chatResponse = chat.messages[0] as CreateChatResponse
     setReq({
-      q,
-      teams: [],
-      levels: [],
-      locations: [],
-      limit: 10,
+      q: chatResponse.title,
+      teams: chatResponse.teams ?? [],
+      levels: chatResponse.levels ?? [],
+      locations: chatResponse.locations ?? [],
+      limit: chatResponse.limit ?? 10,
     })
     usersHandlers.setState(chat.messages.filter((x) => 'user' in x))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,7 +75,11 @@ const Chat: React.FC = () => {
   }, [handleClear, chatId])
 
   const handleStream = useCallback(
-    async (question: string, chatId: string) => {
+    async (
+      question: string,
+      chatId: string,
+      filters: Omit<SearchRequest, 'q' | 'limit'>,
+    ) => {
       handleClear()
       setIsLoading(true)
       const controller = new AbortController()
@@ -84,20 +88,25 @@ const Chat: React.FC = () => {
       try {
         const encodedQuestion = encodeURIComponent(question)
         const url = `${import.meta.env.VITE_API_URL}/api/v1/search`
-        const response = await fetch(
-          url +
-            '?' +
-            new URLSearchParams({
-              q: encodedQuestion,
-              chatId,
-            }).toString(),
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
-            signal: controller.signal,
+
+        const params = new URLSearchParams()
+        params.append('q', encodedQuestion)
+        params.append('chatId', chatId)
+
+        Object.entries(filters || {}).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach((v) => params.append(key, String(v)))
+          } else if (value !== undefined && value !== null) {
+            params.append(key, String(value))
+          }
+        })
+
+        const response = await fetch(`${url}?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
           },
-        )
+          signal: controller.signal,
+        })
 
         if (!response.body) throw new Error('No response body')
 
@@ -152,16 +161,35 @@ const Chat: React.FC = () => {
     abortControllerRef.current = null
   }, [])
 
-  const handleSubmit = async (question: string): Promise<void> => {
-    console.log(isLoading, !question.trim())
+  const handleSubmit = (
+    question: string,
+    filters?: Omit<SearchRequest, 'q' | 'limit'>,
+  ): void => {
+    // console.log(isLoading, !question.trim())
     if (isLoading || !question.trim()) return
 
-    // Chat
-    const chat = await createChat({ message: question.trim() })
+    const effectiveFilters: Omit<SearchRequest, 'q' | 'limit'> = filters ?? {
+      teams: [],
+      levels: [],
+      locations: [],
+    }
 
-    // Search
-    await handleStream(question.trim(), chat.id)
-    navigate(`/chat/${chat.id}`, { replace: false })
+    // Run async work without returning a Promise to match SearchForm's onSearch signature
+    ;(async () => {
+      try {
+        // Chat
+        const chat = await createChat({
+          query: question.trim(),
+          ...effectiveFilters,
+        })
+
+        // Search
+        await handleStream(question.trim(), chat.id, effectiveFilters)
+        navigate(`/chat/${chat.id}`, { replace: false })
+      } catch (err) {
+        console.error('handleSubmit error', err)
+      }
+    })()
   }
 
   const sortedUsers = useMemo(
@@ -278,10 +306,18 @@ const Chat: React.FC = () => {
               <div className="mb-4">
                 <Stack gap="md">
                   {sortedUsers.map((userRes) => (
-                    <UserResultCard data={userRes} key={userRes.user._id} />
+                    <UserResultCard data={userRes} key={userRes.user?._id} />
                   ))}
                 </Stack>
               </div>
+            </div>
+          )}
+
+          {sortedUsers.length === 0 && !isLoading && (
+            <div className="flex-1 flex items-center justify-center">
+              <Title order={3} c="dimmed">
+                No results found. Try adjusting your search criteria.
+              </Title>
             </div>
           )}
         </Stack>

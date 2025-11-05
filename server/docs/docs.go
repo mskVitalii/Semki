@@ -907,6 +907,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/reindex": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieves all users from the database and reindexes them in Qdrant with fresh embeddings.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "qdrant"
+                ],
+                "summary": "Re-index all users",
+                "responses": {
+                    "200": {
+                        "description": "Number of reindexed users",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to fetch users",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/search": {
             "get": {
                 "security": [
@@ -1800,12 +1835,33 @@ const docTemplate = `{
         "dto.CreateChatRequest": {
             "type": "object",
             "required": [
-                "message"
+                "query"
             ],
             "properties": {
-                "message": {
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "locations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "query": {
                     "type": "string",
                     "example": "Who are you having lasagna with today and why?"
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -1817,6 +1873,27 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "locations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "teams": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "title": {
                     "type": "string"

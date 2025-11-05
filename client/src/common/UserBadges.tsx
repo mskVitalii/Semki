@@ -28,13 +28,13 @@ export function UserBadges({ user }: { user: User }) {
 
   return (
     <Group gap="xs" mt="xs">
-      {level && <Badge color="pink">{level}</Badge>}
+      {level && <Badge color="blue">{level}</Badge>}
       {location && (
-        <Badge leftSection={<IconMapPin size={12} />} color="orange">
+        <Badge leftSection={<IconMapPin size={12} />} color="green">
           {location}
         </Badge>
       )}
-      {team && <Badge color="purple">{team}</Badge>}
+      {team && <Badge color="violet">{team}</Badge>}
     </Group>
   )
 }

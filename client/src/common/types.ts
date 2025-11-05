@@ -1,11 +1,19 @@
 // #region Chat
 export interface CreateChatRequest {
-  message: string
+  query: string
+  teams?: string[]
+  levels?: string[]
+  locations?: string[]
+  limit?: number
 }
 
 export interface CreateChatResponse {
   id: string
   title: string
+  teams?: string[]
+  levels?: string[]
+  locations?: string[]
+  limit?: number
   created_at: number
 }
 

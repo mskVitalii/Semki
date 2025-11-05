@@ -190,6 +190,7 @@ func authorization(c *gin.Context, data any) bool {
 			"/api/v1/organization/teams":     {},
 			"/api/v1/organization/levels":    {},
 			"/api/v1/organization/locations": {},
+			"/api/v1/reindex":                {},
 		},
 		"DELETE": {
 			"/api/v1/user/:id":                           {},

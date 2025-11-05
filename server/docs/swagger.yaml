@@ -20,11 +20,25 @@ definitions:
     type: object
   dto.CreateChatRequest:
     properties:
-      message:
+      levels:
+        items:
+          type: string
+        type: array
+      limit:
+        type: integer
+      locations:
+        items:
+          type: string
+        type: array
+      query:
         example: Who are you having lasagna with today and why?
         type: string
+      teams:
+        items:
+          type: string
+        type: array
     required:
-    - message
+    - query
     type: object
   dto.CreateChatResponse:
     properties:
@@ -32,6 +46,20 @@ definitions:
         type: integer
       id:
         type: string
+      levels:
+        items:
+          type: string
+        type: array
+      limit:
+        type: integer
+      locations:
+        items:
+          type: string
+        type: array
+      teams:
+        items:
+          type: string
+        type: array
       title:
         type: string
     type: object
@@ -1043,6 +1071,29 @@ paths:
       summary: Refreshes the authentication token
       tags:
       - auth
+  /api/v1/reindex:
+    post:
+      description: Retrieves all users from the database and reindexes them in Qdrant
+        with fresh embeddings.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Number of reindexed users
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch users
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Re-index all users
+      tags:
+      - qdrant
   /api/v1/search:
     get:
       consumes:

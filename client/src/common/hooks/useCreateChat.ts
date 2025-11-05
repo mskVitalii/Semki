@@ -8,13 +8,13 @@ export const useCreateChat = () => {
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const mutation = useMutation<CreateChatResponse, Error, CreateChatRequest>({
-    mutationFn: async ({ message }) => {
+    mutationFn: async (data) => {
       const controller = new AbortController()
       abortControllerRef.current = controller
 
       const response = await api.post<CreateChatResponse>(
         '/api/v1/chat',
-        { message },
+        data,
         {
           signal: controller.signal,
         },
@@ -23,7 +23,7 @@ export const useCreateChat = () => {
       return response.data
     },
     onSuccess: (data) => {
-      console.log(data)
+      console.log('useCreateChat', data)
       queryClient.invalidateQueries({
         queryKey: ['chatHistory'],
       })

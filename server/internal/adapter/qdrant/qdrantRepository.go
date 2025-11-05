@@ -184,10 +184,30 @@ func (r *repository) DeleteUser(ctx context.Context, id string) error {
 }
 
 func (r *repository) SearchUserByVector(ctx context.Context, vector []float32, filters SearchFilters) ([]VectorSearchResult, error) {
-	response, err := r.client.Points.Search(ctx, &qdrant.SearchPoints{
+	must := make([]*qdrant.Condition, 0)
+
+	if len(filters.Teams) > 0 {
+		must = append(must, qdrant.NewMatchKeywords("team", filters.Teams...))
+	}
+
+	if len(filters.Levels) > 0 {
+		must = append(must, qdrant.NewMatchKeywords("level", filters.Levels...))
+	}
+
+	if len(filters.Locations) > 0 {
+		must = append(must, qdrant.NewMatchKeywords("location", filters.Locations...))
+	}
+
+	var filter *qdrant.Filter
+	if len(must) > 0 {
+		filter = &qdrant.Filter{Must: must}
+	}
+
+	resp, err := r.client.Points.Search(ctx, &qdrant.SearchPoints{
 		CollectionName: r.collectionName,
 		Vector:         vector,
 		Limit:          filters.Limit,
+		Filter:         filter,
 		WithPayload: &qdrant.WithPayloadSelector{
 			SelectorOptions: &qdrant.WithPayloadSelector_Enable{Enable: true},
 		},
@@ -196,8 +216,8 @@ func (r *repository) SearchUserByVector(ctx context.Context, vector []float32, f
 		return nil, fmt.Errorf("failed to search users: %w", err)
 	}
 
-	results := make([]VectorSearchResult, 0, len(response.Result))
-	for _, point := range response.Result {
+	results := make([]VectorSearchResult, 0, len(resp.Result))
+	for _, point := range resp.Result {
 		userID, err := r.payloadToUser(point.Payload)
 		if err != nil {
 			fmt.Printf("Warning: failed to convert payload to userID: %v\n", err)
@@ -222,7 +242,10 @@ func (r *repository) userIDToPointID(userID string) (uint64, error) {
 
 func (r *repository) userToPayload(user *model.User) (map[string]*qdrant.Value, error) {
 	payload := map[string]*qdrant.Value{
-		"user_id": {Kind: &qdrant.Value_StringValue{StringValue: user.ID.Hex()}},
+		"user_id":  {Kind: &qdrant.Value_StringValue{StringValue: user.ID.Hex()}},
+		"team":     {Kind: &qdrant.Value_StringValue{StringValue: user.Semantic.Team.Hex()}},
+		"level":    {Kind: &qdrant.Value_StringValue{StringValue: user.Semantic.Level.Hex()}},
+		"location": {Kind: &qdrant.Value_StringValue{StringValue: user.Semantic.Location.Hex()}},
 	}
 	return payload, nil
 }

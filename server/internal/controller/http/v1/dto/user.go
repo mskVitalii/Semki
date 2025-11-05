@@ -97,7 +97,15 @@ func (req *InviteUserRequest) UserToInvite(organizationId primitive.ObjectID) (*
 	if req.Semantic != nil {
 		semantic := model.UserSemantic{
 			Description: req.Semantic.Description,
-			Location:    req.Semantic.Location,
+		}
+
+		// Convert location ObjectID if provided
+		if req.Semantic.Location != "" {
+			locationID, err := primitive.ObjectIDFromHex(req.Semantic.Location)
+			if err != nil {
+				return nil, err
+			}
+			semantic.Location = locationID
 		}
 
 		// Convert team ObjectID if provided
@@ -178,7 +186,7 @@ type PatchUserRequest struct {
 		Description *string             `json:"description,omitempty" bson:"description,omitempty"`
 		Team        *primitive.ObjectID `json:"team,omitempty" bson:"team,omitempty"`
 		Level       *primitive.ObjectID `json:"level,omitempty" bson:"level,omitempty"`
-		Location    *string             `json:"location,omitempty" bson:"location,omitempty"`
+		Location    *primitive.ObjectID `json:"location,omitempty" bson:"location,omitempty"`
 	} `json:"semantic,omitempty" bson:"semantic,omitempty"`
 	Contact *struct {
 		Slack     *string `json:"slack,omitempty" bson:"slack,omitempty"`

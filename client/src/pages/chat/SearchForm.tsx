@@ -75,9 +75,7 @@ function SearchForm({ req, onSearch, onCancel, isLoading }: SearchFormProps) {
             placeholder={qPlaceholder.current}
             rightSection={isLoading && <Loader c="green" size="xs" />}
             variant="unstyled"
-            classNames={{
-              label: 'text-2xl!',
-            }}
+            classNames={{ label: 'text-2xl!' }}
             size="lg"
             {...form.getInputProps('q')}
           />
@@ -108,7 +106,7 @@ function SearchForm({ req, onSearch, onCancel, isLoading }: SearchFormProps) {
               <MultiSelect
                 placeholder="Select locations"
                 data={organization.semantic.locations.map((l) => ({
-                  value: l.name,
+                  value: l.id ?? l.name,
                   label: l.name,
                 }))}
                 searchable

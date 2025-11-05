@@ -106,7 +106,7 @@ func startup(cfg *config.Config) {
 	authService := service.NewAuthService(userRepo)
 	organizationService := service.NewOrganizationService(orgRepo, userRepo)
 	embedderService := service.NewEmbedderService(cfg.Embedder.Url)
-	qdrantService := service.NewQdrantService(qdrantRepo, embedderService)
+	qdrantService := service.NewQdrantService(qdrantRepo, userRepo, embedderService)
 	authMiddleware := jwtUtils.Startup(cfg, authService)
 	withAuth := jwtUtils.UseAuth(authMiddleware, cfg, redis)
 	logoutHandler := jwtUtils.LogoutHandler(authMiddleware, cfg, redis)
@@ -181,6 +181,7 @@ func startup(cfg *config.Config) {
 		routes.RegisterAuthRoutes(apiV1, authService, googleAuthService, authMiddleware, withAuth, logoutHandler)
 		routes.RegisterSearchRoutes(apiV1, searchService, withAuth, redis)
 		routes.RegisterChatRoutes(apiV1, chatService, withAuth, redis)
+		routes.RegisterQdrantRoutes(apiV1, withAuth, qdrantService)
 	}
 	r.NoRoute(jwtUtils.NoRoute)
 	// endregion

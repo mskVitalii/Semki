@@ -45,7 +45,7 @@ type UserSemantic = struct {
 	Description string             `json:"description" bson:"description"`
 	Team        primitive.ObjectID `json:"team" bson:"team"`
 	Level       primitive.ObjectID `json:"level" bson:"level"`
-	Location    string             `json:"location" bson:"location"`
+	Location    primitive.ObjectID `json:"location" bson:"location"`
 }
 
 type UserContact struct {
