@@ -1,6 +1,8 @@
-import type { SearchResult } from '@/common/types'
+import { UserStatuses, type SearchResult } from '@/common/types'
+import { useOrganizationStore } from '@/stores/organizationStore'
 import {
   Anchor,
+  Badge,
   Button,
   Group,
   Paper,
@@ -15,8 +17,10 @@ import {
   IconBrandWhatsapp,
   IconHash,
   IconMail,
+  IconMapPin,
   IconPhone,
 } from '@tabler/icons-react'
+import React, { useMemo } from 'react'
 import Interpretation from './Interpretation'
 
 type UserResultCardProps = {
@@ -26,6 +30,20 @@ type UserResultCardProps = {
 function UserResultCard({ data }: UserResultCardProps) {
   const { user } = data
   const { contact } = user
+  const organization = useOrganizationStore((s) => s.organization)
+  const level = useMemo(
+    () =>
+      organization?.semantic.levels.find((l) => l.id === user.semantic.level)
+        ?.name ?? user.semantic.level,
+    [organization?.semantic.levels, user.semantic.level],
+  )
+  const location = useMemo(
+    () =>
+      organization?.semantic.locations.find(
+        (l) => l.id === user.semantic.location,
+      )?.name ?? user.semantic.location,
+    [organization?.semantic.locations, user.semantic.location],
+  )
 
   const contacts = [
     {
@@ -42,7 +60,7 @@ function UserResultCard({ data }: UserResultCardProps) {
     },
     {
       key: 'email',
-      value: contact.email,
+      value: contact.email === '' ? user.email : contact.email,
       icon: IconMail,
       href: `mailto:${contact.email}`,
     },
@@ -101,6 +119,22 @@ function UserResultCard({ data }: UserResultCardProps) {
             {data.score}
           </Anchor>
         </Text>
+        <Text size="sm" className="leading-relaxed text-slate-700">
+          {user.semantic?.description}
+        </Text>
+
+        <Group gap="xs" mt="xs">
+          {user.status == UserStatuses.DELETED && (
+            <Badge color="red">{UserStatuses.DELETED}</Badge>
+          )}
+          {level && <Badge color="blue">{level}</Badge>}
+          {location && (
+            <Badge leftSection={<IconMapPin size={12} />} color="green">
+              {location}
+            </Badge>
+          )}
+        </Group>
+
         <Interpretation interpretation={data.description} />
         <Group gap="xs" mt="sm" wrap="wrap">
           {contacts.map(({ key, icon: Icon, href }) => (
@@ -124,4 +158,4 @@ function UserResultCard({ data }: UserResultCardProps) {
   )
 }
 
-export default UserResultCard
+export default React.memo(UserResultCard)

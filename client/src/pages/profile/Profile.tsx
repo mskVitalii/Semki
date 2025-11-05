@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { api } from '@/api/client'
 import { MainLayout } from '@/common/SidebarLayout'
 import { type User } from '@/common/types'
@@ -21,6 +22,34 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 
+function diffUser(a: User, b: User): Partial<User> {
+  function compare(valA: any, valB: any): any {
+    if (typeof valA !== 'object' || valA === null) {
+      return valA !== valB ? valB : undefined
+    }
+
+    const result: any = Array.isArray(valA) ? [] : {}
+    let hasDiff = false
+
+    for (const key of Object.keys(valA)) {
+      if (valB && key in valB) {
+        const diff = compare(valA[key], valB[key])
+        if (diff !== undefined) {
+          result[key] = diff
+          hasDiff = true
+        }
+      } else {
+        result[key] = valB?.[key]
+        hasDiff = true
+      }
+    }
+
+    return hasDiff ? result : undefined
+  }
+
+  return compare(a, b) ?? {}
+}
+
 export default function Profile() {
   const { userId } = useParams<{ userId: string }>()
   const { data: user, isLoading } = useQuery({
@@ -31,7 +60,6 @@ export default function Profile() {
     },
     enabled: !!userId,
   })
-
   const isAdmin = useAuthStore((s) => s.isAdmin)
   const currUserId = useAuthStore((s) => s.claims?._id)
 
@@ -40,8 +68,10 @@ export default function Profile() {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
 
   const mutation = useMutation({
-    mutationFn: (payload: Partial<User>) =>
-      api.patch(`/api/v1/user/${userId}`, payload),
+    mutationFn: (payload: Partial<User>) => {
+      console.log('mutation', payload)
+      return api.patch(`/api/v1/user/${userId}`, payload)
+    },
     onMutate: () => setStatus('saving'),
     onSuccess: () => {
       setStatus('saved')
@@ -49,6 +79,7 @@ export default function Profile() {
       queryClient.invalidateQueries({ queryKey: ['user', userId] })
       if (userId === currUserId)
         queryClient.invalidateQueries({ queryKey: ['user'] })
+      console.log('onSuccess', user)
     },
     onError: () => {
       notifications.show({
@@ -61,33 +92,37 @@ export default function Profile() {
   })
 
   const form = useForm<User>({
-    mode: 'uncontrolled',
+    mode: 'controlled',
     initialValues: user || ({} as User),
   })
 
   useEffect(() => {
-    if (user) {
-      form.setValues(user)
-      form.setInitialValues(user)
-      form.reset()
-    }
+    if (!user || !user._id || !userId || isLoading) return
+    console.log('useEffect reset')
+    form.setValues(user)
+    form.setInitialValues(user)
+    form.reset()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const [debounced] = useDebouncedValue(form.values, 1000)
-  const [isReady, setIsReady] = useState(false)
+  const [debounced] = useDebouncedValue(form.values, 2000)
 
   useEffect(() => {
-    if (isLoading) return
-    if (!isReady) {
-      setIsReady(true)
-      return
-    }
-    if (userId) mutation.mutate(debounced)
+    if (!user || !user._id || !userId || !debounced) return
+    if (Object.keys(debounced).length === 0) return
+    const changes = diffUser(user, debounced)
+    if (Object.keys(changes).length === 0) return
+    console.log('changes', changes, debounced, form.values)
+    mutation.mutate(changes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debounced, userId])
 
-  if (!user || !organization || isLoading)
+  if (
+    !user ||
+    !organization ||
+    isLoading ||
+    Object.keys(form.values).length === 0
+  )
     return (
       <MainLayout>
         <div className="flex items-center h-full">
@@ -113,11 +148,13 @@ export default function Profile() {
             label="Email"
             readOnly={!isAdmin}
             styles={{ label: { marginBottom: '0.75rem' } }}
+            key={form.key('email')}
             {...form.getInputProps('email')}
           />
           <TextInput
             label="Name"
             styles={{ label: { marginBottom: '0.75rem' } }}
+            key={form.key('name')}
             {...form.getInputProps('name')}
           />
           <Divider label="Semantic" m="lg" />
@@ -129,38 +166,45 @@ export default function Profile() {
               label: { marginBottom: '0.75rem' },
               input: { resize: 'vertical' },
             }}
+            key={form.key('semantic.description')}
             {...form.getInputProps('semantic.description')}
           />
 
           <Select
             label="Location"
+            allowDeselect={false}
             styles={{ label: { marginBottom: '0.75rem' } }}
             data={organization.semantic.locations.map((l) => ({
               value: l.id!,
               label: l.name,
             }))}
+            key={form.key('semantic.location')}
             {...form.getInputProps('semantic.location')}
           />
 
           <Group grow>
             <Select
               label="Team"
+              allowDeselect={false}
               readOnly={!isAdmin}
               styles={{ label: { marginBottom: '0.75rem' } }}
               data={organization.semantic.teams.map((t) => ({
                 value: t.id!,
                 label: t.name,
               }))}
+              key={form.key('semantic.team')}
               {...form.getInputProps('semantic.team')}
             />
             <Select
               label="Level"
               readOnly={!isAdmin}
+              allowDeselect={false}
               styles={{ label: { marginBottom: '0.75rem' } }}
               data={organization.semantic.levels.map((l) => ({
                 value: l.id!,
                 label: l.name,
               }))}
+              key={form.key('semantic.level')}
               {...form.getInputProps('semantic.level')}
             />
           </Group>
@@ -169,11 +213,13 @@ export default function Profile() {
             <TextInput
               label="Slack"
               styles={{ label: { marginBottom: '0.75rem' } }}
+              key={form.key('semantic.slack')}
               {...form.getInputProps('contact.slack')}
             />
             <TextInput
               label="Telephone"
               styles={{ label: { marginBottom: '0.75rem' } }}
+              key={form.key('semantic.telephone')}
               {...form.getInputProps('contact.telephone')}
             />
           </Group>
@@ -181,11 +227,13 @@ export default function Profile() {
             <TextInput
               label="Telegram"
               styles={{ label: { marginBottom: '0.75rem' } }}
+              key={form.key('semantic.telegram')}
               {...form.getInputProps('contact.telegram')}
             />
             <TextInput
               label="WhatsApp"
               styles={{ label: { marginBottom: '0.75rem' } }}
+              key={form.key('semantic.whatsapp')}
               {...form.getInputProps('contact.whatsapp')}
             />
           </Group>

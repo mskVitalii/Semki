@@ -200,7 +200,7 @@ func (s *searchService) Search(c *gin.Context) {
 						Role: "assistant",
 						Content: bson.M{
 							"score":       result.Score,
-							"user":        result.User,
+							"user":        result.User.ID.Hex(),
 							"description": result.Description,
 						},
 						Timestamp: time.Now(),

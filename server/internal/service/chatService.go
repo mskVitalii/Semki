@@ -1,8 +1,10 @@
 package service
 
 import (
+	"fmt"
 	"github.com/sashabaranov/go-openai"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"semki/internal/adapter/mongo"
 	"semki/internal/controller/http/v1/dto"
@@ -11,6 +13,7 @@ import (
 	"semki/internal/utils/jwtUtils"
 	"semki/internal/utils/mongoUtils"
 	"semki/pkg/lib"
+	"semki/pkg/telemetry"
 	"strconv"
 	"time"
 
@@ -18,11 +21,12 @@ import (
 )
 
 type chatService struct {
-	repo mongo.IChatRepository
+	chatRepo mongo.IChatRepository
+	userRepo mongo.IUserRepository
 }
 
-func NewChatService(repo mongo.IChatRepository) routes.IChatService {
-	return &chatService{repo}
+func NewChatService(chatRepo mongo.IChatRepository, userRepo mongo.IUserRepository) routes.IChatService {
+	return &chatService{chatRepo, userRepo}
 }
 
 // CreateChat
@@ -65,7 +69,7 @@ func (s *chatService) CreateChat(c *gin.Context) {
 		},
 	}
 
-	if err := s.repo.CreateChat(c.Request.Context(), chat); err != nil {
+	if err := s.chatRepo.CreateChat(c.Request.Context(), chat); err != nil {
 		lib.ResponseInternalServerError(c, err, "failed to create chat")
 		return
 	}
@@ -112,7 +116,8 @@ func (s *chatService) GetChat(c *gin.Context) {
 		return
 	}
 
-	chat, err := s.repo.GetChatByID(c.Request.Context(), chatObjID, userID)
+	ctx := c.Request.Context()
+	chat, err := s.chatRepo.GetChatByID(ctx, chatObjID, userID)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "failed to fetch chat")
 		return
@@ -123,9 +128,54 @@ func (s *chatService) GetChat(c *gin.Context) {
 		return
 	}
 
+	idsMap := make(map[primitive.ObjectID]struct{})
+	for _, msg := range chat.Messages {
+		if uid, ok := msg.Content["user"].(primitive.ObjectID); ok {
+			idsMap[uid] = struct{}{}
+		} else if uidStr, ok := msg.Content["user"].(string); ok {
+			uidObj, err := primitive.ObjectIDFromHex(uidStr)
+			if err == nil {
+				idsMap[uidObj] = struct{}{}
+			}
+		}
+	}
+
+	ids := make([]primitive.ObjectID, 0, len(idsMap))
+	for id := range idsMap {
+		ids = append(ids, id)
+	}
+
+	users, err := s.userRepo.GetUsersByIDs(ctx, ids)
+	if err != nil {
+		lib.ResponseInternalServerError(c, err, "Cannot get chat users")
+		return
+	}
+
+	userMap := make(map[string]interface{}, len(users))
+	for _, u := range users {
+		userMap[u.ID.Hex()] = u
+	}
+
 	messages := make([]map[string]interface{}, 0, len(chat.Messages))
 	for _, msg := range chat.Messages {
-		messages = append(messages, msg.Content)
+		content := make(map[string]interface{})
+		for k, v := range msg.Content {
+			telemetry.Log.Info(fmt.Sprintf("key: %s", k))
+			if k == "user" {
+				telemetry.Log.Info(fmt.Sprintf("%s", v))
+				if u, ok := userMap[v.(string)]; ok {
+					telemetry.Log.Info(fmt.Sprintf("Found userMap by %s", v.(string)))
+
+					content[k] = u
+				} else {
+					content[k] = v
+				}
+			} else {
+				content[k] = v
+			}
+		}
+		messages = append(messages, content)
+		telemetry.Log.Info(fmt.Sprintf("new Len: %d", len(messages)))
 	}
 
 	response := dto.GetChatResponse{
@@ -167,7 +217,7 @@ func (s *chatService) GetUserHistory(c *gin.Context) {
 		}
 	}
 
-	chatsData, nextCursor, err := s.repo.GetChatsByUserIDWithCursor(c.Request.Context(), userID, cursor, limit)
+	chatsData, nextCursor, err := s.chatRepo.GetChatsByUserIDWithCursor(c.Request.Context(), userID, cursor, limit)
 	if err != nil {
 		lib.ResponseInternalServerError(c, err, "failed to fetch history")
 		return

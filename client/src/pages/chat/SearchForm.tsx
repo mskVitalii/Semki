@@ -1,7 +1,8 @@
 import type { SearchRequest } from '@/common/types'
 import { Button, Group, Loader, Paper, TextInput, Tooltip } from '@mantine/core'
 import { IconPlayerStop, IconSend } from '@tabler/icons-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 
 // TODO: filters
 
@@ -13,6 +14,16 @@ type SearchFormProps = {
 }
 
 function SearchForm({ req, onSearch, onCancel, isLoading }: SearchFormProps) {
+  const { chatId } = useParams<{ chatId?: string }>()
+
+  const handleClear = useCallback((): void => {
+    setQuestion('')
+  }, [])
+
+  useEffect(() => {
+    handleClear()
+  }, [handleClear, chatId])
+
   const [question, setQuestion] = useState<string>(req?.q ?? '')
   const handleKeyPress = (
     event: React.KeyboardEvent<HTMLInputElement>,

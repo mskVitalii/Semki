@@ -2,11 +2,12 @@ import { chatHistory } from '@/api/chat'
 import { Card, ScrollArea, Text } from '@mantine/core'
 import { useIntersection } from '@mantine/hooks'
 import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 export default function History() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
@@ -42,6 +43,15 @@ export default function History() {
     },
     {},
   )
+
+  const handleClick = useCallback(
+    (chatId: string) => {
+      if (location.pathname === `/chat/${chatId}`) return
+      navigate(`/chat/${chatId}`, { replace: true })
+    },
+    [location.pathname, navigate],
+  )
+
   return (
     <ScrollArea className="flex-1">
       <div className="space-y-6 px-3 pb-4">
@@ -70,9 +80,7 @@ export default function History() {
                       radius="md"
                       withBorder
                       className="cursor-pointer bg-gray-800/40 hover:bg-gray-700/60! transition-all duration-150"
-                      onClick={() =>
-                        navigate(`/chat/${chat.id}`, { replace: true })
-                      }
+                      onClick={() => handleClick(chat.id)}
                     >
                       <Text
                         size="sm"

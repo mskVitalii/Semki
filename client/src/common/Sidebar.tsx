@@ -53,7 +53,12 @@ export function Sidebar({ onNewChat }: SidebarProps) {
             <Avatar size="md" radius="xl">
               <IconSitemap size={20} />
             </Avatar>
-            <Text size="md" fw={500} c="green" className="hover:text-blue-100!">
+            <Text
+              size="md"
+              fw={500}
+              c="green"
+              className="hover:text-blue-100! capitalize"
+            >
               {organizationDomain ?? 'Organization'}
             </Text>
           </UnstyledButton>

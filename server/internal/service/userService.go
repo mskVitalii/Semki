@@ -450,13 +450,15 @@ func (s *userService) PatchUser(c *gin.Context) {
 	}
 
 	update := bson.M{}
-	if body.Email != nil {
-		update["email"] = *body.Email
-		existing.Email = *body.Email
-	}
 	if body.Name != nil {
 		update["name"] = *body.Name
 		existing.Name = *body.Name
+	}
+	if body.Email != nil {
+		update["email"] = *body.Email
+		update["contact.email"] = *body.Email
+		existing.Email = *body.Email
+		existing.Contact.Email = *body.Email
 	}
 	if body.Semantic != nil && body.Semantic.Description != nil {
 		desc := *body.Semantic.Description
@@ -467,6 +469,45 @@ func (s *userService) PatchUser(c *gin.Context) {
 		}
 		update["semantic.description"] = encrypted
 		existing.Semantic.Description = desc
+	}
+	if body.Semantic != nil {
+		if body.Semantic.Team != nil {
+			update["semantic.team"] = *body.Semantic.Team
+			existing.Semantic.Team = *body.Semantic.Team
+		}
+		if body.Semantic.Level != nil {
+			update["semantic.level"] = *body.Semantic.Level
+			existing.Semantic.Level = *body.Semantic.Level
+		}
+		if body.Semantic.Location != nil {
+			update["semantic.location"] = *body.Semantic.Location
+			existing.Semantic.Location = *body.Semantic.Location
+		}
+	}
+
+	if body.Contact != nil {
+		if body.Contact.Slack != nil {
+			update["contact.slack"] = *body.Contact.Slack
+			existing.Contact.Slack = *body.Contact.Slack
+		}
+		if body.Contact.Telephone != nil {
+			update["contact.telephone"] = *body.Contact.Telephone
+			existing.Contact.Telephone = *body.Contact.Telephone
+		}
+		if body.Contact.Email != nil {
+			update["email"] = *body.Contact.Email
+			update["contact.email"] = *body.Contact.Email
+			existing.Email = *body.Contact.Email
+			existing.Contact.Email = *body.Contact.Email
+		}
+		if body.Contact.Telegram != nil {
+			update["contact.telegram"] = *body.Contact.Telegram
+			existing.Contact.Telegram = *body.Contact.Telegram
+		}
+		if body.Contact.WhatsApp != nil {
+			update["contact.whatsapp"] = *body.Contact.WhatsApp
+			existing.Contact.WhatsApp = *body.Contact.WhatsApp
+		}
 	}
 
 	if len(update) == 0 {

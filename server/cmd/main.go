@@ -102,7 +102,7 @@ func startup(cfg *config.Config) {
 		cfg.SMTP.FromName,
 	)
 	llmService := service.NewLLMService(cfg.OpenAIKey)
-	chatService := service.NewChatService(chatRepo)
+	chatService := service.NewChatService(chatRepo, userRepo)
 	authService := service.NewAuthService(userRepo)
 	organizationService := service.NewOrganizationService(orgRepo, userRepo)
 	embedderService := service.NewEmbedderService(cfg.Embedder.Url)

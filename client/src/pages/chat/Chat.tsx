@@ -18,8 +18,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import SearchForm from './SearchForm'
 import UserResultCard from './UserResultCard'
 
-// TODO: button to retry if no answer in chat & no generation in progress
-
 const Chat: React.FC = () => {
   const [users, usersHandlers] = useListState<SearchResult>([])
   const access_token = useAuthStore((state) => state.accessToken)
@@ -33,17 +31,29 @@ const Chat: React.FC = () => {
   const handleClear = useCallback((): void => {
     usersHandlers.setState([])
     setError('')
-  }, [usersHandlers])
+    setReq({
+      q: '',
+      teams: [],
+      levels: [],
+      locations: [],
+      limit: 10,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { chatId } = useParams<{ chatId?: string }>()
   const navigate = useNavigate()
 
-  const { data: chat, isError } = useQuery<GetChatResponse, AxiosError>({
+  const {
+    data: chat,
+    isError,
+    error: chatLoadError,
+  } = useQuery<GetChatResponse, AxiosError>({
     queryKey: ['chat', chatId],
     queryFn: () => fetchChatById(chatId!),
     enabled: !!chatId,
   })
-  console.log('current chat ', chat, isError)
+  // console.log('current chat ', chat, isError)
 
   useEffect(() => {
     if (!chat) return
@@ -59,6 +69,10 @@ const Chat: React.FC = () => {
     usersHandlers.setState(chat.messages.filter((x) => 'user' in x))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chat])
+
+  useEffect(() => {
+    if (!chatId) handleClear()
+  }, [handleClear, chatId])
 
   const handleStream = useCallback(
     async (question: string, chatId: string) => {
@@ -125,7 +139,6 @@ const Chat: React.FC = () => {
           setError('Unknown error occurred')
         }
       } finally {
-        console.log('Stream finished -> handleStream')
         setIsLoading(false)
         abortControllerRef.current = null
       }
@@ -145,11 +158,9 @@ const Chat: React.FC = () => {
 
     // Chat
     const chat = await createChat({ message: question.trim() })
-    console.log('handleSubmit chat', chat)
 
     // Search
     await handleStream(question.trim(), chat.id)
-    console.log('Stream finished -> handleSubmit')
     navigate(`/chat/${chat.id}`, { replace: false })
   }
 
@@ -204,31 +215,40 @@ const Chat: React.FC = () => {
             </Alert>
           )}
 
-          {/* Response Display */}
-          {sortedUsers.length > 0 && (
-            <>
-              <Group justify="space-between" mb="sm">
-                <Title order={1} fw={900} className="text-5xl" mt={'lg'}>
-                  {req?.q ?? 'Response'}
-                </Title>
-                {isLoading && (
-                  <Badge color="blue" variant="dot" size="sm">
-                    Streaming...
-                  </Badge>
-                )}
-              </Group>
+          {isError && chatLoadError && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              title="Error"
+              color="red"
+              variant="light"
+            >
+              {chatLoadError.message || 'Failed to load chat.'}
+            </Alert>
+          )}
 
-              <div className="w-full mx-auto p-4">
-                {/* Found Users List */}
-                <div className="mb-4">
-                  <Stack gap="md">
-                    {sortedUsers.map((userRes) => (
-                      <UserResultCard data={userRes} key={userRes.user._id} />
-                    ))}
-                  </Stack>
-                </div>
+          {/* Response Display */}
+          <Group justify="space-between" mb="sm">
+            <Title order={1} fw={900} className="text-5xl" mt={'lg'}>
+              {req?.q ?? 'Response'}
+            </Title>
+            {isLoading && (
+              <Badge color="blue" variant="dot" size="sm">
+                Streaming...
+              </Badge>
+            )}
+          </Group>
+
+          {sortedUsers.length > 0 && (
+            <div className="w-full mx-auto p-4">
+              {/* Found Users List */}
+              <div className="mb-4">
+                <Stack gap="md">
+                  {sortedUsers.map((userRes) => (
+                    <UserResultCard data={userRes} key={userRes.user._id} />
+                  ))}
+                </Stack>
               </div>
-            </>
+            </div>
           )}
         </Stack>
       </Card>
