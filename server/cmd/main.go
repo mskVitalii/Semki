@@ -166,7 +166,6 @@ func startup(cfg *config.Config) {
 
 	r.Use(otelgin.Middleware(cfg.Service))
 	r.Use(gin.Logger())
-	//r.Use(telemetry.LoggerMiddleware(telemetry.Log))
 	r.Use(telemetry.TraceIDMiddleware())
 	// endregion
 

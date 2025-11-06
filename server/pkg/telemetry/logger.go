@@ -24,7 +24,7 @@ func SetupLogger(cfg *config.Config) {
 
 	var encoder zapcore.Encoder
 
-	if cfg.IsDebug && !cfg.JsonLog {
+	if cfg.IsDebug || !cfg.JsonLog {
 		encoder = zapcore.NewConsoleEncoder(encoderConfig)
 	} else {
 		encoder = zapcore.NewJSONEncoder(encoderConfig)

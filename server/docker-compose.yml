@@ -2,6 +2,7 @@ services:
   # ----------------------------------- APPS
   semki-server:
     build: .
+    container_name: semki-server
     develop:
       watch:
         - action: rebuild
@@ -38,6 +39,17 @@ services:
       start_period: 5s
     networks:
       - semki_network
+
+  web:
+    container_name: semki-web
+    build:
+      context: ../client
+      dockerfile: ../client/Dockerfile
+    ports:
+      - '80:80'
+    environment:
+      VITE_API_URL: http://semki-server:8080
+    restart: unless-stopped
 
 
   # ----------------------------------- DATABASES
@@ -171,11 +183,12 @@ services:
 
   # [LOGGING] promtail
   promtail:
-    image: grafana/promtail:latest
+    image: grafana/promtail:3.2.1
     volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/log:/var/log:ro
       - ./resources/promtail-config.yaml:/etc/promtail/promtail.yaml
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/log:/var/log:ro
     command: -config.file=/etc/promtail/promtail.yaml
     networks:
       - semki_network
@@ -183,15 +196,23 @@ services:
 
   # [LOGGING] loki
   loki:
-    image: grafana/loki:latest
+    image: grafana/loki:3.2.1
     ports:
       - "3100:3100"
     container_name: semki-loki
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
       - ./resources/loki-config.yaml:/etc/loki/local-config.yaml
+      - loki-data:/loki
     networks:
       - semki_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 
   # [MAIL] Mailhog
   mailhog:
@@ -204,6 +225,26 @@ services:
     networks:
       - semki_network
 
+  # [MONITORING] MongoDB Exporter
+  mongodb_exporter:
+    image: percona/mongodb_exporter:0.40
+    container_name: semki-mongodb-exporter
+    restart: unless-stopped
+    ports:
+      - "9216:9216"
+    environment:
+      MONGODB_USER: ${MONGO_USER}
+      MONGODB_PASSWORD: ${MONGO_PASSWORD}
+    command:
+      - '--mongodb.uri=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:${MONGO_PORT}/?authSource=${MONGO_DATABASE}'
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - semki_network
+    env_file:
+      - .env.production
+
 
 # ----------------------------------- OTHER
 networks:
@@ -214,3 +255,4 @@ networks:
 volumes:
   mongodb-data:
   grafana:
+  loki-data:
