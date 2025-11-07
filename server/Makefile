@@ -15,8 +15,20 @@ restore-grafana:
 	@echo "\nUsage: make restore-grafana-file FILE=./backups/grafana-TIMESTAMP.db"
 
 restore-grafana-file:
+ifndef FILE
+	$(error FILE is not set, use: make restore-grafana-file FILE=./backups/grafana.db)
+endif
+
+	@echo "Setting temporary permissive rights on backup..."
+	chmod 777 $(FILE)
+
+	@echo "Copying backup into Grafana volume..."
 	docker cp $(FILE) semki-grafana:/var/lib/grafana/grafana.db
+
+	@echo "Restarting Grafana..."
 	docker-compose restart grafana
+
+	@echo "Restore complete. Grafana restarted."
 
 # Loki
 test-query:
