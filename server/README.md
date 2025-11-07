@@ -22,9 +22,6 @@ docker compose up -d
 # View logs
 docker compose logs -f
 
-# Development mode with hot reload
-docker compose watch
-
 # Stop all services
 docker compose down
 ```
@@ -190,14 +187,17 @@ JWT_SECRET=your-secret-key
 # Build application
 make build
 
-# Run tests
-make test
-
 # Generate swagger
 make swagger
 
-# Run linter
-make lint
+# Restore grafana
+make restore-grafana-file FILE=./backups/grafana-20251107-025757.db
+
+# Get list of the backups
+restore-grafana
+
+# Create a backup
+make backup-grafana
 ```
 
 ---
