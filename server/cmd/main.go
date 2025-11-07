@@ -156,9 +156,14 @@ func startup(cfg *config.Config) {
 	corsCfg.AllowOrigins = []string{
 		cfg.FrontendUrl,
 		"http://prometheus:9090",
-		"https://*.semki.local",
+		"https://semki.local",
 		"https://api.semki.local",
-		"http://localhost:8080"}
+		"http://localhost:8000",
+		"http://localhost:80",
+		"http://localhost:80",
+		"http://127.0.0.1:80",
+		"http://0.0.0.0:80",
+	}
 	corsCfg.AllowCredentials = true
 	corsCfg.AddExposeHeaders(telemetry.TraceHeader)
 	corsCfg.AddAllowHeaders(jwtUtils.AuthorizationHeader)

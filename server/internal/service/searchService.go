@@ -114,7 +114,7 @@ func (s *searchService) Search(c *gin.Context) {
 	vectorSearchResults, err := s.qdrantService.SearchUsers(ctx, filters)
 	if err != nil {
 		s.logger.Error("Search failed: " + err.Error())
-		lib.ResponseInternalServerError(c, err, "Search failed")
+		lib.ResponseInternalServerError(c, err, "Search failed vector DB")
 		return
 	}
 
@@ -134,7 +134,7 @@ func (s *searchService) Search(c *gin.Context) {
 	users, err := s.userRepo.GetUsersByIDs(ctx, userIDs)
 	if err != nil {
 		s.logger.Error("Failed to get users by IDs: " + err.Error())
-		lib.ResponseInternalServerError(c, err, "Search failed")
+		lib.ResponseInternalServerError(c, err, "Search failed GetUsersByIDs")
 		return
 	}
 

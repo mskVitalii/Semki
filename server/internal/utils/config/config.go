@@ -14,7 +14,7 @@ import (
 // AppConfig - app.yml for service const values
 type AppConfig struct {
 	Service                string  `yaml:"service" env-required:"true" json:"service"`
-	Port                   string  `yaml:"port" env-default:"8080" json:"port,omitempty"`
+	Port                   string  `yaml:"port" env-default:"8000" json:"port,omitempty"`
 	Host                   string  `yaml:"host" env-required:"true" json:"host"`
 	Protocol               string  `yaml:"protocol" env-required:"true" json:"protocol"`
 	GrafanaSlowRequest     int32   `yaml:"grafana_slow_request" env-required:"true" json:"grafanaSlowRequest"`

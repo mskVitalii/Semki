@@ -124,8 +124,8 @@ After starting with `docker compose up -d`, access services at:
 | Service | URL | Credentials |
 |---------|-----|-------------|
 | **Web Application** | http://localhost:80 | - |
-| **API** | http://localhost:8080 | - |
-| **API Docs (Swagger)** | http://localhost:8080/swagger/index.html | - |
+| **API** | http://localhost:8000 | - |
+| **API Docs (Swagger)** | http://localhost:8000/swagger/index.html | - |
 | **Grafana** | http://localhost:3030 | admin/admin |
 | **Prometheus** | http://localhost:9090 | - |
 | **Jaeger** | http://localhost:16686 | - |

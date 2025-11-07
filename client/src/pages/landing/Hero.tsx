@@ -1,3 +1,4 @@
+import image from '@/media/image_hero.svg'
 import {
   Anchor,
   Button,
@@ -7,10 +8,10 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import image from '@/media/image_hero.svg'
 import Logo from './Logo'
 
 export function Hero() {
+  console.log('import.meta.env.VITE_API_URL', import.meta.env.VITE_API_URL)
   return (
     <Container size="md" className="min-h-screen">
       <div className="flex min-h-screen justify-between items-center pt-[calc(var(--mantine-spacing-xl)*4)] pb-[calc(var(--mantine-spacing-xl)*4)]">

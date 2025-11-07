@@ -12,6 +12,7 @@ An intelligent communication platform with semantic search and AI-powered user m
 
 - Docker & Docker Compose
 - Make (optional, for shortcuts)
+- Add domains to /etc/hosts
 
 ### Start Application
 

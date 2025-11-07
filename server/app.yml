@@ -1,5 +1,5 @@
 service: "semki"
-port: 8080
+port: 8000
 host: "localhost"
 protocol: "http"
 grafana_slow_request: 3

@@ -5,5 +5,5 @@ This template provides a minimal setup to get React working in Vite with HMR and
 ### .env
 
 ```
-VITE_API_URL=http://0.0.0.0:8080
+VITE_API_URL=http://0.0.0.0:8000
 ```

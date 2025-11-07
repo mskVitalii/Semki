@@ -34,3 +34,7 @@ endif
 test-query:
 	@echo "=== Last logs ==="
 	@curl -s "http://localhost:3100/loki/api/v1/query_range?query={container=~\"semki-.*\"}&limit=5" | jq .
+
+
+add-hosts:
+	sudo sh -c 'echo "127.0.0.1 semki.local" >> /etc/hosts'
