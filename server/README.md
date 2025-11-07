@@ -29,20 +29,20 @@ docker compose down
 
 ### Access Points
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| **Web UI** | http://localhost:80 | Frontend application |
-| **API** | http://localhost:8080 | Backend API |
-| **Swagger** | http://localhost:8080/swagger/index.html | API documentation |
-| **Grafana** | http://localhost:3030 | Monitoring dashboards |
-| **Prometheus** | http://localhost:9090 | Metrics collection |
-| **Jaeger** | http://localhost:16686 | Distributed tracing |
-| **Pyroscope** | http://localhost:4040 | Continuous profiling |
-| **Loki** | http://localhost:3100 | Log aggregation |
-| **Mailhog** | http://localhost:8025 | Email testing |
-| **MongoDB** | localhost:27017 | Database |
-| **Qdrant** | http://localhost:6333 | Vector database |
-| **Redis** | localhost:6379 | Cache |
+| Service | URL                                      | Description |
+|---------|------------------------------------------|-------------|
+| **Web UI** | http://localhost:80                      | Frontend application |
+| **API** | http://localhost:8000                    | Backend API |
+| **Swagger** | http://localhost:8000/swagger/index.html | API documentation |
+| **Grafana** | http://localhost:3030                    | Monitoring dashboards |
+| **Prometheus** | http://localhost:9090                    | Metrics collection |
+| **Jaeger** | http://localhost:16686                   | Distributed tracing |
+| **Pyroscope** | http://localhost:4040                    | Continuous profiling |
+| **Loki** | http://localhost:3100                    | Log aggregation |
+| **Mailhog** | http://localhost:8025                    | Email testing |
+| **MongoDB** | localhost:27017                          | Database |
+| **Qdrant** | http://localhost:6333                    | Vector database |
+| **Redis** | localhost:6379                           | Cache |
 
 ---
 
@@ -256,7 +256,7 @@ See deployment steps in comments for K8S setup with Minikube:
 
 Interactive API documentation is available via Swagger UI:
 
-**Local:** http://localhost:8080/swagger/index.html
+**Local:** http://localhost:8000/swagger/index.html
 
 ### Example Endpoints
 
@@ -278,7 +278,7 @@ POST   /api/v1/organization/insert-mock # Generate mock data
 Insert realistic test data:
 
 ```shell
-curl -X POST http://localhost:8080/api/v1/organization/insert-mock \
+curl -X POST http://localhost:8000/api/v1/organization/insert-mock \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -336,5 +336,5 @@ See LICENSE file for details.
 
 ## 🔗 Links
 
-- [Swagger UI](http://localhost:8080/swagger/index.html)
+- [Swagger UI](http://localhost:8000/swagger/index.html)
 - [Grafana Dashboards](http://localhost:3030)

@@ -306,9 +306,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🔗 Links
 
-- [Habr Article (Russian)](https://habr.com/ru/articles/826508/)
-- [Medium Article (English)](https://medium.com/@msk.vitalii/from-firebase-to-self-hosted-4ddb01c539e1)
-- [Staffbase Code the Future](https://www.staffbase.com/en/code-the-future/)
+- [Staffbase Code the Future](https://staffbase.com/ai-challenge)
 - [Server Documentation](./server/README.md)
 - [Client Documentation](./client/README.md)
 

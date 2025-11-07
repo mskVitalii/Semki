@@ -158,6 +158,7 @@ func startup(cfg *config.Config) {
 		"http://prometheus:9090",
 		"https://semki.local",
 		"https://api.semki.local",
+		"http://localhost:5173",
 		"http://localhost:8000",
 		"http://localhost:80",
 		"http://localhost:80",
