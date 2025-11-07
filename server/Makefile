@@ -1,4 +1,4 @@
-.PHONY: swagger test-query backup-grafana restore-grafana restore-grafana-file restore-grafana-rules
+.PHONY: swagger test-query backup-grafana restore-grafana restore-grafana-file
 
 swagger:
 	sh ./resources/swagger.sh
