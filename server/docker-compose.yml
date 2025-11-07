@@ -146,10 +146,8 @@ services:
     environment:
       - GF_FEATURE_TOGGLES_ENABLE=flameGraph
     volumes:
-      - ./resources/grafana.yml:/etc/grafana/provisioning/datasources/datasources.yaml
       - ./resources/grafana-provisioning:/etc/grafana/provisioning
       - grafana:/var/lib/grafana
-      - ./resources/grafana-dashboards:/var/lib/grafana/dashboards
     networks:
       - semki_network
 

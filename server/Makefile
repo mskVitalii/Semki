@@ -1,4 +1,4 @@
-.PHONY: swagger test-query backup-grafana restore-grafana restore-grafana-file
+.PHONY: swagger test-query backup-grafana restore-grafana restore-grafana-file restore-grafana-rules
 
 swagger:
 	sh ./resources/swagger.sh
@@ -15,8 +15,20 @@ restore-grafana:
 	@echo "\nUsage: make restore-grafana-file FILE=./backups/grafana-TIMESTAMP.db"
 
 restore-grafana-file:
+ifndef FILE
+	$(error FILE is not set, use: make restore-grafana-file FILE=./backups/grafana.db)
+endif
+
+	@echo "Setting temporary permissive rights on backup..."
+	chmod 666 $(FILE)
+
+	@echo "Copying backup into Grafana volume..."
 	docker cp $(FILE) semki-grafana:/var/lib/grafana/grafana.db
+
+	@echo "Restarting Grafana..."
 	docker-compose restart grafana
+
+	@echo "Restore complete. Grafana restarted."
 
 # Loki
 test-query:
