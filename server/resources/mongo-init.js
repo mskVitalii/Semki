@@ -16,5 +16,16 @@ db.createUser({
         },
     ],
 });
-
 console.log("[mongo-init] user created")
+
+const adminDB = db.getSiblingDB("admin");
+adminDB.createUser({
+    user: process.env.MONGO_METRICS_USERNAME,
+    pwd: process.env.MONGO_METRICS_USER_PASSWORD,
+    roles: [
+        { role: "clusterMonitor", db: "admin" },
+        { role: "readAnyDatabase", db: "admin" },
+        { role: "read", db: "local" }
+    ]
+});
+console.log("[mongo-init] metrics user created")

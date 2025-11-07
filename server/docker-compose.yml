@@ -227,16 +227,19 @@ services:
 
   # [MONITORING] MongoDB Exporter
   mongodb_exporter:
-    image: percona/mongodb_exporter:0.40
+    image: percona/mongodb_exporter:0.30
     container_name: semki-mongodb-exporter
     restart: unless-stopped
     ports:
       - "9216:9216"
     environment:
-      MONGODB_USER: ${MONGO_USER}
-      MONGODB_PASSWORD: ${MONGO_PASSWORD}
+      MONGODB_USER: ${MONGO_METRICS_USERNAME}
+      MONGODB_PASSWORD: ${MONGO_METRICS_USER_PASSWORD}
     command:
-      - '--mongodb.uri=mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:${MONGO_PORT}/?authSource=${MONGO_DATABASE}'
+      - '--mongodb.uri=mongodb://${MONGO_METRICS_USERNAME}:${MONGO_METRICS_USER_PASSWORD}@mongo:${MONGO_PORT}/?authSource=admin'
+      - '--collector.dbstats'
+      - '--collector.topmetrics'
+      - '--compatible-mode'
     depends_on:
       mongo:
         condition: service_healthy

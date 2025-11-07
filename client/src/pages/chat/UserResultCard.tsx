@@ -13,6 +13,10 @@ type UserResultCardProps = {
 function UserResultCard({ data }: UserResultCardProps) {
   const { user } = data
 
+  if (!user) {
+    return null
+  }
+
   return (
     <Paper
       key={user._id}

@@ -9,20 +9,20 @@ export function UserBadges({ user }: { user: User }) {
   const level = useMemo(
     () =>
       organization?.semantic.levels.find((l) => l.id === user.semantic.level)
-        ?.name ?? user.semantic.level,
+        ?.name,
     [organization?.semantic.levels, user.semantic.level],
   )
   const location = useMemo(
     () =>
       organization?.semantic.locations.find(
         (l) => l.id === user.semantic.location,
-      )?.name ?? user.semantic.location,
+      )?.name,
     [organization?.semantic.locations, user.semantic.location],
   )
   const team = useMemo(
     () =>
       organization?.semantic.teams.find((t) => t.id === user.semantic.team)
-        ?.name ?? user.semantic.team,
+        ?.name,
     [organization?.semantic.teams, user.semantic.team],
   )
 
