@@ -1005,7 +1005,7 @@ func (s *organizationService) InsertMock(c *gin.Context) {
 			OrganizationID:   organizationID,
 			OrganizationRole: model.OrganizationRoles.USER,
 			Semantic: model.UserSemantic{
-				Description: "Data analyst experienced in SQL, Python, and BI tools. Provides actionable insights to marketing and product teams. Prefers structured documentation and concise reports.",
+				Description: "Data analyst experienced in SQL, Python, and BI tools. Provides actionable insights to marketing and product teams. Prefers structured documentation and concise reports. Prefer japanese cuisine.",
 				Team:        mockTeams[3].ID,  // Marketing
 				Level:       mockLevels[1].ID, // Middle
 				Location:    mockLocations[4].ID,
@@ -1025,7 +1025,7 @@ func (s *organizationService) InsertMock(c *gin.Context) {
 			OrganizationID:   organizationID,
 			OrganizationRole: model.OrganizationRoles.ADMIN,
 			Semantic: model.UserSemantic{
-				Description: "Head of Product leading roadmap execution and cross-functional coordination. Strong communicator with focus on strategic outcomes. Prefers brief updates via email.",
+				Description: "Head of Product leading roadmap execution and cross-functional coordination. Strong communicator with focus on strategic outcomes. Prefers brief updates via email. Prefer italian cuisine.",
 				Team:        mockTeams[1].ID,  // Product
 				Level:       mockLevels[4].ID, // Principal
 				Location:    mockLocations[0].ID,

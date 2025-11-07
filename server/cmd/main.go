@@ -119,7 +119,7 @@ func startup(cfg *config.Config) {
 			cfg.Protocol+"://"+cfg.Host+":"+cfg.Port+"/api/v1"+routes.GoogleCallback,
 			cfg.Google.ClientID,
 			cfg.Google.ClientSecret)
-		googleAuthService = service.NewGoogleAuthService(qdrantService, userRepo, google, authMiddleware, cfg.FrontendUrl)
+		googleAuthService = service.NewGoogleAuthService(qdrantService, userRepo, orgRepo, google, authMiddleware, cfg.FrontendUrl)
 	}
 	// endregion
 

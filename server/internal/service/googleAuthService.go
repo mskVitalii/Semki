@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	jwt "github.com/appleboy/gin-jwt/v3"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/oauth2"
@@ -11,13 +12,15 @@ import (
 	"semki/internal/controller/http/v1/routes"
 	"semki/internal/model"
 	"semki/pkg/google"
+	"semki/pkg/lib"
 	"semki/pkg/telemetry"
 )
 
 // authService - dependent services
 type googleAuthService struct {
 	qdrantService IQdrantService
-	repo          mongo.IUserRepository
+	userRepo      mongo.IUserRepository
+	orgRepo       mongo.IOrganizationRepository
 	google        google.Google
 	jwtAuth       *jwt.GinJWTMiddleware
 	frontendUrl   string
@@ -25,13 +28,14 @@ type googleAuthService struct {
 
 func NewGoogleAuthService(
 	qdrantService IQdrantService,
-	repo mongo.IUserRepository,
+	userRepo mongo.IUserRepository,
+	orgRepo mongo.IOrganizationRepository,
 	google google.Google,
 	jwtAuth *jwt.GinJWTMiddleware,
 	frontendUrl string,
 ) routes.IGoogleAuthService {
 
-	return &googleAuthService{qdrantService, repo, google, jwtAuth, frontendUrl}
+	return &googleAuthService{qdrantService, userRepo, orgRepo, google, jwtAuth, frontendUrl}
 }
 
 // GoogleLoginHandler godoc
@@ -86,19 +90,28 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 	}
 
 	// DB
-	userFromDB, err := s.repo.GetUserByEmail(ctx, user.Email)
+	userFromDB, err := s.userRepo.GetUserByEmail(ctx, user.Email)
 	if err != nil {
 		c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20db")
 		return
 	}
 
 	if userFromDB == nil {
+		organization := dto.NewOrganizationFromRequest(dto.CreateOrganizationRequest{
+			Title: fmt.Sprintf("%s's organization", user.Email),
+		})
+		err = s.orgRepo.CreateOrganization(ctx, organization)
+		if err != nil {
+			lib.ResponseInternalServerError(c, err, "Failed to create organization")
+			return
+		}
 		userFromDB = dto.NewUserFromGoogleProvider(user)
+		userFromDB.OrganizationID = organization.ID
 		if userFromDB.OrganizationRole == "" {
 			// Invited users has its Role. Probably fix it later
 			userFromDB.OrganizationRole = model.OrganizationRoles.OWNER
 		}
-		if err := s.repo.CreateUser(ctx, userFromDB); err != nil {
+		if err := s.userRepo.CreateUser(ctx, userFromDB); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20create-user")
 			return
 		}
@@ -108,7 +121,7 @@ func (s *googleAuthService) GoogleAuthCallback(c *gin.Context) {
 			return
 		}
 		userFromDB.Providers = append(userFromDB.Providers, model.UserProviders.Google)
-		if err := s.repo.UpdateUser(ctx, userFromDB.ID, *userFromDB); err != nil {
+		if err := s.userRepo.UpdateUser(ctx, userFromDB.ID, *userFromDB); err != nil {
 			c.Redirect(http.StatusFound, s.frontendUrl+"/login?error=internal%20error%20update%20provider")
 			return
 		}

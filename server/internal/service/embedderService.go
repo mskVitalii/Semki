@@ -55,6 +55,7 @@ func NewEmbedderService(embedderURL string) IEmbedderService {
 
 // Embed embeds a single text
 func (s *embedderService) Embed(text string) ([]float32, error) {
+	telemetry.Log.Info("EMBED" + text)
 	embeddings, err := s.EmbedBatch([]string{text})
 	if err != nil {
 		return nil, err

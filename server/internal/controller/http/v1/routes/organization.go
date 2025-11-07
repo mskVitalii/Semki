@@ -56,6 +56,5 @@ func RegisterOrganizationRoutes(g *gin.RouterGroup, organizationService IOrganiz
 	g.POST(organizationLocations, securityHandler, organizationService.CreateLocation)
 	g.DELETE(organizationLocations+"/:locationId", securityHandler, organizationService.DeleteLocation)
 
-	// TODO: Add to authorization
 	g.POST(organizationCRUD+"/insert-mock", securityHandler, organizationService.InsertMock)
 }
