@@ -18,6 +18,8 @@ services:
         condition: service_started
       embedder:
         condition: service_healthy
+      qdrant:
+        condition: service_healthy
 
   embedder:
     image: mskkote/open-data-embedder:latest
