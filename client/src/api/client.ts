@@ -3,7 +3,7 @@ import { useAuthStore } from '@/stores/authStore'
 import axios from 'axios'
 
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: `https://${import.meta.env.VITE_API_URL}`,
 })
 
 // Request interceptor - adds token to each request

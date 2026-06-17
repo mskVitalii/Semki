@@ -87,7 +87,7 @@ const Chat: React.FC = () => {
 
       try {
         const encodedQuestion = encodeURIComponent(question)
-        const url = `${import.meta.env.VITE_API_URL}/api/v1/search`
+        const url = `https://${import.meta.env.VITE_API_URL}/api/v1/search`
 
         const params = new URLSearchParams()
         params.append('q', encodedQuestion)
