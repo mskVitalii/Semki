@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	_ "semki/docs"
 	"semki/internal/adapter/mongo"
 	"semki/internal/adapter/qdrant"
@@ -27,6 +26,7 @@ import (
 	"semki/pkg/clients"
 	google2 "semki/pkg/google"
 	"semki/pkg/telemetry"
+	"strings"
 	"time"
 )
 
