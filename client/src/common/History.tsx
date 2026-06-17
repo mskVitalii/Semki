@@ -25,7 +25,9 @@ export default function History() {
     }
   }, [entry?.isIntersecting, hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const allChats = data?.pages.flatMap((page) => page.chats) ?? []
+  const allChats =
+    data?.pages.flatMap((page) => page.chats).filter((chat) => chat != null) ??
+    []
 
   const grouped = allChats.reduce<Record<string, typeof allChats>>(
     (acc, chat) => {

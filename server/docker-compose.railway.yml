@@ -3,12 +3,6 @@ services:
   semki-server:
     build: .
     container_name: semki-server
-    develop:
-      watch:
-        - action: rebuild
-          path: .
-    env_file:
-      - .env.production
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8000/api/v1/healthcheck"]
       interval: 15s
@@ -17,8 +11,6 @@ services:
       retries: 3
     ports:
       - "8000:8000"
-    networks:
-      - semki_network
     depends_on:
       mongo:
         condition: service_healthy
@@ -34,13 +26,11 @@ services:
       - "8080:8080"
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/healthz" ]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
       interval: 60s
       timeout: 5s
       retries: 3
       start_period: 5s
-    networks:
-      - semki_network
 
   web:
     container_name: semki-web
@@ -48,22 +38,19 @@ services:
       context: ../client
       dockerfile: ../client/Dockerfile
       args:
-        VITE_API_URL: "http://semki-server:8000"
-    environment:
-      VITE_API_URL: "http://semki-server:8000"
+        # Set VITE_API_URL to the public Railway URL of semki-server,
+        # e.g. https://<project>.up.railway.app
+        VITE_API_URL: "${VITE_API_URL}"
     ports:
-      - '80:80'
-#    environment:
-#     during the build
-#      VITE_API_URL: "http://api.semki.local:8000"
+      - "80:80"
     restart: unless-stopped
-    networks:
-      - semki_network
 
 
   # ----------------------------------- DATABASES
   mongo:
-    image: mongo:latest
+    build:
+      context: ./resources
+      dockerfile: Dockerfile.mongo
     container_name: semki-mongo
     healthcheck:
       test: mongosh --eval 'db.runCommand("ping").ok' --quiet
@@ -74,31 +61,22 @@ services:
       - 27017:27017
     volumes:
       - mongodb-data:/data/db
-      - ./resources/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
-    networks:
-      - semki_network
-    env_file: .env.production
     command: ["--auth"]
 
   qdrant:
     image: qdrant/qdrant:v1.14.1
     container_name: semki-qdrant
     ports:
-      - "6333:6333"  # HTTP API
-      - "6334:6334"  # gRPC API
+      - "6333:6333"
+      - "6334:6334"
     volumes:
-      - ./qdrant_data:/qdrant/storage
+      - qdrant-data:/qdrant/storage
     environment:
-      # gRPC configuration
       - QDRANT__SERVICE__GRPC_PORT=6334
       - QDRANT__SERVICE__ENABLE_TLS=false
-      # Performance optimizations
-      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=0  # Use all available cores
+      - QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS=0
       - QDRANT__STORAGE__PERFORMANCE__MAX_OPTIMIZATION_THREADS=2
-      # Optional: increase payload index threshold for better performance
       - QDRANT__STORAGE__OPTIMIZERS__PAYLOAD_INDEX_THRESHOLD=20000
-    env_file:
-      - .env.production
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "timeout", "1", "bash", "-c", "</dev/tcp/localhost/6333"]
@@ -106,61 +84,51 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-    # Resource limits (adjust based on your system)
     deploy:
       resources:
         limits:
           memory: 4G
         reservations:
           memory: 2G
-    networks:
-      - semki_network
 
   redis:
     image: redis:7
     container_name: semki-redis
     ports:
       - "6379:6379"
-    networks:
-      - semki_network
-    env_file: .env.production
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 2s
       retries: 5
-    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
 
 
   # ----------------------------------- INFRA
-  # [MONITORING] Prometheus
+  # [MONITORING] Prometheus — config baked into image
   prometheus:
-    image: prom/prometheus:latest
+    build:
+      context: ./resources
+      dockerfile: Dockerfile.prometheus
     ports:
       - "9090:9090"
     container_name: semki-prometheus
-    volumes:
-      - ./resources/prometheus.yml:/etc/prometheus/prometheus.yml
-    networks:
-      - semki_network
 
-  # [MONITORING] Grafana
+  # [MONITORING] Grafana — provisioning baked into image
   grafana:
-    image: grafana/grafana:latest
+    build:
+      context: ./resources
+      dockerfile: Dockerfile.grafana
     ports:
       - "3030:3000"
     container_name: semki-grafana
-    env_file: .env.production
     environment:
       - GF_FEATURE_TOGGLES_ENABLE=flameGraph
     volumes:
-      - ./resources/grafana-provisioning:/etc/grafana/provisioning
       - grafana:/var/lib/grafana
-    networks:
-      - semki_network
 
-  # [profiling] - Pyroscope
+  # [PROFILING] Pyroscope
   pyroscope:
     image: pyroscope/pyroscope:latest
     deploy:
@@ -171,48 +139,38 @@ services:
     container_name: semki-pyroscope
     environment:
       - PYROSCOPE_STORAGE_PATH=/var/lib/pyroscope
-    command:
-      - "server"
-    networks:
-      - semki_network
+    command: ["server"]
 
   # [TRACING] Jaeger
   jaeger:
     image: jaegertracing/all-in-one:latest
-    networks:
-      - semki_network
-    env_file: .env.production
     ports:
       - "16686:16686"
       - "14269:14269"
       - "${JAEGER_PORT:-14268}:14268"
     container_name: semki-jaeger
 
-  # [LOGGING] promtail
+  # [LOGGING] Promtail — config baked into image
   promtail:
-    image: grafana/promtail:3.2.1
+    build:
+      context: ./resources
+      dockerfile: Dockerfile.promtail
     volumes:
-      - ./resources/promtail-config.yaml:/etc/promtail/promtail.yaml
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/log:/var/log:ro
-    command: -config.file=/etc/promtail/promtail.yaml
-    networks:
-      - semki_network
     container_name: semki-promtail
 
-  # [LOGGING] loki
+  # [LOGGING] Loki — config baked into image
   loki:
-    image: grafana/loki:3.2.1
+    build:
+      context: ./resources
+      dockerfile: Dockerfile.loki
     ports:
       - "3100:3100"
     container_name: semki-loki
-    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./resources/loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/loki
-    networks:
-      - semki_network
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3100/ready || exit 1"]
       interval: 10s
@@ -220,17 +178,14 @@ services:
       retries: 5
       start_period: 10s
 
-
   # [MAIL] Mailhog
   mailhog:
     image: mailhog/mailhog
     container_name: semki-mailhog
     ports:
-      - "1025:1025"  # SMTP port
-      - "8025:8025"  # Web UI port
+      - "1025:1025"
+      - "8025:8025"
     restart: unless-stopped
-    networks:
-      - semki_network
 
   # [MONITORING] MongoDB Exporter
   mongodb_exporter:
@@ -243,26 +198,18 @@ services:
       MONGODB_USER: ${MONGO_METRICS_USERNAME}
       MONGODB_PASSWORD: ${MONGO_METRICS_USER_PASSWORD}
     command:
-      - '--mongodb.uri=mongodb://${MONGO_METRICS_USERNAME}:${MONGO_METRICS_USER_PASSWORD}@mongo:${MONGO_PORT}/?authSource=admin'
-      - '--collector.dbstats'
-      - '--collector.topmetrics'
-      - '--compatible-mode'
+      - "--mongodb.uri=mongodb://${MONGO_METRICS_USERNAME}:${MONGO_METRICS_USER_PASSWORD}@mongo:${MONGO_PORT}/?authSource=admin"
+      - "--collector.dbstats"
+      - "--collector.topmetrics"
+      - "--compatible-mode"
     depends_on:
       mongo:
         condition: service_healthy
-    networks:
-      - semki_network
-    env_file:
-      - .env.production
 
 
 # ----------------------------------- OTHER
-networks:
-  semki_network:
-    driver: bridge
-
-# Persistent data stores
 volumes:
   mongodb-data:
+  qdrant-data:
   grafana:
   loki-data:

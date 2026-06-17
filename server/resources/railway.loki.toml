@@ -1,0 +1,8 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.loki"
+
+[deploy]
+healthcheckPath = "/ready"
+healthcheckTimeout = 15
+restartPolicyType = "always"

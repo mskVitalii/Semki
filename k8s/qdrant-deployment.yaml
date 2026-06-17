@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: qdrant
+  name: qdrant
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: qdrant
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: qdrant
+    spec:
+      containers:
+        - env:
+            - name: QDRANT__SERVICE__ENABLE_TLS
+              value: "false"
+            - name: QDRANT__SERVICE__GRPC_PORT
+              value: "6334"
+            - name: QDRANT__STORAGE__OPTIMIZERS__PAYLOAD_INDEX_THRESHOLD
+              value: "20000"
+            - name: QDRANT__STORAGE__PERFORMANCE__MAX_OPTIMIZATION_THREADS
+              value: "2"
+            - name: QDRANT__STORAGE__PERFORMANCE__MAX_SEARCH_THREADS
+              value: "0"
+          envFrom:
+            - configMapRef:
+                name: env-production
+          image: qdrant/qdrant:v1.14.1
+          livenessProbe:
+            exec:
+              command:
+                - timeout
+                - "1"
+                - bash
+                - -c
+                - </dev/tcp/localhost/6333
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+          name: semki-qdrant
+          ports:
+            - containerPort: 6333
+              protocol: TCP
+            - containerPort: 6334
+              protocol: TCP
+          resources:
+            limits:
+              memory: "1Gi"
+            requests:
+              memory: "512Mi"
+      restartPolicy: Always

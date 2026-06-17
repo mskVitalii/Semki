@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: semki-server
+  name: semki-server
+spec:
+  type: NodePort
+  ports:
+    - name: "8000"
+      port: 8000
+      targetPort: 8000
+      nodePort: 30800
+  selector:
+    io.kompose.service: semki-server

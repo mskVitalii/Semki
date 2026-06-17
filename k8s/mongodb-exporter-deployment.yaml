@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: mongodb-exporter
+  name: mongodb-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: mongodb-exporter
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: mongodb-exporter
+    spec:
+      containers:
+        - args:
+            - --mongodb.uri=mongodb://metrics:metrics123@mongo:27017/?authSource=admin
+            - --collector.dbstats
+            - --collector.topmetrics
+            - --compatible-mode
+          env:
+            - name: MONGODB_PASSWORD
+              value: metrics123
+            - name: MONGODB_USER
+              value: metrics
+          envFrom:
+            - configMapRef:
+                name: env-production
+          image: percona/mongodb_exporter:0.30
+          name: semki-mongodb-exporter
+          ports:
+            - containerPort: 9216
+              protocol: TCP
+      restartPolicy: Always

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: promtail
+  name: promtail
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: promtail
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: promtail
+    spec:
+      containers:
+        - args:
+            - -config.file=/etc/promtail/promtail.yaml
+          image: grafana/promtail:3.2.1
+          name: semki-promtail
+          volumeMounts:
+            - mountPath: /etc/promtail/promtail.yaml
+              name: promtail-cm0
+              subPath: promtail.yaml
+            - mountPath: /var/log/containers
+              name: containers-logs
+              readOnly: true
+            - mountPath: /var/log/pods
+              name: pods-logs
+              readOnly: true
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: promtail-config.yaml
+                path: promtail.yaml
+            name: promtail-cm0
+          name: promtail-cm0
+        - name: containers-logs
+          hostPath:
+            path: /var/log/containers
+        - name: pods-logs
+          hostPath:
+            path: /var/log/pods

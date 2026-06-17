@@ -1,0 +1,7 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.mongo"
+
+[deploy]
+healthcheckTimeout = 30
+restartPolicyType = "always"

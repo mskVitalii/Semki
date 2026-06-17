@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: loki
+  name: loki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: loki
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: loki
+    spec:
+      containers:
+        - args:
+            - -config.file=/etc/loki/local-config.yaml
+          image: grafana/loki:3.2.1
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 3100
+            failureThreshold: 5
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+          name: semki-loki
+          ports:
+            - containerPort: 3100
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /etc/loki/local-config.yaml
+              name: loki-cm0
+              subPath: local-config.yaml
+            - mountPath: /loki
+              name: loki-data
+      restartPolicy: Always
+      volumes:
+        - configMap:
+            items:
+              - key: loki-config.yaml
+                path: local-config.yaml
+            name: loki-cm0
+          name: loki-cm0
+        - name: loki-data
+          persistentVolumeClaim:
+            claimName: loki-data

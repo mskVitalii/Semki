@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+    kompose.version: 1.38.0 (HEAD)
+  labels:
+    io.kompose.service: embedder
+  name: embedder
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: embedder
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert -f docker-compose.yml -o ../k8s/
+        kompose.version: 1.38.0 (HEAD)
+      labels:
+        io.kompose.service: embedder
+    spec:
+      containers:
+        - image: mskkote/open-data-embedder:latest
+          livenessProbe:
+            exec:
+              command:
+                - curl
+                - -f
+                - http://localhost:8080/healthz
+            failureThreshold: 3
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            timeoutSeconds: 5
+          name: semki-embedder
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+      restartPolicy: Always
