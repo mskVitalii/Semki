@@ -1,8 +1,8 @@
-db = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE)
+const adminDb = db.getSiblingDB("admin")
 
 console.log("[mongo-init] create user")
 
-db.createUser({
+adminDb.createUser({
     user: process.env.MONGO_INITDB_ROOT_USERNAME,
     pwd: process.env.MONGO_INITDB_ROOT_PASSWORD,
     roles: [
@@ -18,8 +18,7 @@ db.createUser({
 });
 console.log("[mongo-init] user created")
 
-const adminDB = db.getSiblingDB("admin");
-adminDB.createUser({
+adminDb.createUser({
     user: process.env.MONGO_METRICS_USERNAME,
     pwd: process.env.MONGO_METRICS_USER_PASSWORD,
     roles: [

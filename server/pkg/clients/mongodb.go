@@ -38,7 +38,7 @@ type MongoDb struct {
 // ConnectToMongoDb connects to a running MongoDB instance
 func ConnectToMongoDb(ctx context.Context, user, pass, host, database string, port int) (*MongoDb, error) {
 	credential := options.Credential{
-		AuthSource: database,
+		AuthSource: "admin",
 		Username:   user,
 		Password:   pass,
 	}
