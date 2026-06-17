@@ -14,7 +14,7 @@ WORKDIR /app
 COPY --from=builder /app/main .
 COPY --from=builder /app/app.yml .
 
-EXPOSE 8080
+EXPOSE 8000
 CMD ["/app/main"]
 
 #HEALTHCHECK --interval=3s --timeout=3s --start-period=1s --retries=3 \
