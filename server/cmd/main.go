@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	_ "semki/docs"
 	"semki/internal/adapter/mongo"
 	"semki/internal/adapter/qdrant"
@@ -153,18 +154,20 @@ func startup(cfg *config.Config) {
 	})
 
 	corsCfg := cors.DefaultConfig()
-	corsCfg.AllowOrigins = []string{
-		cfg.FrontendUrl,
+	allowedOrigins := []string{
 		"http://prometheus:9090",
 		"https://semki.local",
 		"https://api.semki.local",
 		"http://localhost:5173",
 		"http://localhost:8000",
 		"http://localhost:80",
-		"http://localhost:80",
 		"http://127.0.0.1:80",
 		"http://0.0.0.0:80",
 	}
+	if u := cfg.FrontendUrl; strings.HasPrefix(u, "http://") || strings.HasPrefix(u, "https://") {
+		allowedOrigins = append(allowedOrigins, u)
+	}
+	corsCfg.AllowOrigins = allowedOrigins
 	corsCfg.AllowCredentials = true
 	corsCfg.AddExposeHeaders(telemetry.TraceHeader)
 	corsCfg.AddAllowHeaders(jwtUtils.AuthorizationHeader)
